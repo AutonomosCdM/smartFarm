@@ -1,4 +1,4 @@
-import { createGroq } from '@ai-sdk/groq';
+import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import { NextRequest } from 'next/server';
 import {
   buildSystemPrompt,
@@ -9,15 +9,15 @@ import {
 } from '@/lib/ai';
 import { createDocument } from '@/lib/ai/tools/create-document';
 
-const groq = createGroq({
-  apiKey: process.env.GROQ_API_KEY,
+const openrouter = createOpenRouter({
+  apiKey: process.env.OPENROUTER_API_KEY,
 });
 
 export async function POST(req: NextRequest) {
   try {
     // Validate environment variables
-    if (!process.env.GROQ_API_KEY) {
-      return new Response('GROQ_API_KEY not configured', { status: 500 });
+    if (!process.env.OPENROUTER_API_KEY) {
+      return new Response('OPENROUTER_API_KEY not configured', { status: 500 });
     }
 
     // Parse request body
@@ -85,14 +85,17 @@ Examples:
 - "Crea una tabla de riego" → createDocument(kind: "sheet", title: "Tabla de Riego Semanal")
 - "Muestra un gráfico de rendimiento" → createDocument(kind: "chart", title: "Rendimiento de Cultivos")`;
 
-    // Stream response from Groq with artifact tools using createUIMessageStream
-    const { streamText: streamTextFn, createUIMessageStream } = await import('ai');
+    // Stream response with artifact tools using createUIMessageStream
+    const { streamText: streamTextFn, createUIMessageStream, convertToModelMessages } = await import('ai');
 
     const stream = createUIMessageStream({
       execute: ({ writer: dataStream }) => {
+        // Convert UIMessage[] from frontend to ModelMessage[] for AI Core
+        const modelMessages = convertToModelMessages(messages);
+
         const result = streamTextFn({
-          model: groq('llama-3.3-70b-versatile'),
-          messages,
+          model: openrouter('google/gemini-2.0-flash-exp:free'),
+          messages: modelMessages,
           system: artifactSystemPrompt,
           temperature: 0.7,
           maxSteps: 5,

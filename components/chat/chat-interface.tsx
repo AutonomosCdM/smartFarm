@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { useChat } from "@ai-sdk/react"
 import { Card } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Message } from "./message"
@@ -10,14 +11,6 @@ import { DataStreamHandler } from "@/components/data-stream-handler"
 import { Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { DEFAULT_AGENT, type AgentType } from "@/lib/ai"
-import { readDataStream } from "ai"
-
-interface ChatMessage {
-  id: string
-  role: "user" | "assistant"
-  content: string
-  timestamp: Date
-}
 
 interface ChatInterfaceProps {
   apiEndpoint?: string
@@ -33,13 +26,28 @@ export function ChatInterface({
   enableRAG = false,
 }: ChatInterfaceProps) {
   const [selectedAgent, setSelectedAgent] = React.useState<AgentType>(DEFAULT_AGENT)
-  const [messages, setMessages] = React.useState<ChatMessage[]>([])
-  const [isLoading, setIsLoading] = React.useState(false)
-  const [error, setError] = React.useState<Error | null>(null)
   const [streamData, setStreamData] = React.useState<any[]>([])
-
   const scrollAreaRef = React.useRef<HTMLDivElement>(null)
   const bottomRef = React.useRef<HTMLDivElement>(null)
+
+  const {
+    messages,
+    status,
+    error,
+    sendMessage,
+  } = useChat({
+    api: apiEndpoint,
+    body: {
+      agent: selectedAgent,
+      useRAG: enableRAG,
+    },
+    onData: (dataPart) => {
+      // Collect all data stream parts for artifacts
+      setStreamData(prev => [...prev, dataPart])
+    },
+  })
+
+  const isLoading = status === 'submitted' || status === 'streaming'
 
   // Auto-scroll to bottom when new messages arrive
   React.useEffect(() => {
@@ -50,93 +58,9 @@ export function ChatInterface({
     setSelectedAgent(newAgent)
   }
 
-  const onSend = async (message: string) => {
+  const onSend = (message: string) => {
     if (!message.trim() || isLoading) return
-
-    const userMessage: ChatMessage = {
-      id: Date.now().toString(),
-      role: "user",
-      content: message,
-      timestamp: new Date(),
-    }
-
-    setMessages(prev => [...prev, userMessage])
-    setIsLoading(true)
-    setError(null)
-    setStreamData([]) // Reset stream data
-
-    try {
-      const response = await fetch(apiEndpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: [...messages, userMessage].map(m => ({
-            role: m.role,
-            content: m.content,
-          })),
-          agent: selectedAgent,
-          useRAG: enableRAG,
-        }),
-      })
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-
-      if (!response.body) {
-        throw new Error('No response body')
-      }
-
-      const assistantMessage: ChatMessage = {
-        id: (Date.now() + 1).toString(),
-        role: "assistant",
-        content: '',
-        timestamp: new Date(),
-      }
-
-      setMessages(prev => [...prev, assistantMessage])
-
-      // Process the stream using AI SDK's readDataStream
-      const reader = response.body.getReader()
-      const dataStream = readDataStream({
-        reader,
-        onError: (error) => {
-          console.error('Stream error:', error)
-          setError(error instanceof Error ? error : new Error('Stream error'))
-        },
-      })
-
-      let textContent = ''
-      const streamParts: any[] = []
-
-      for await (const chunk of dataStream) {
-        if (chunk.type === 'text') {
-          textContent += chunk.value
-          setMessages(prev => {
-            const updated = [...prev]
-            const lastIndex = updated.length - 1
-            if (updated[lastIndex].role === 'assistant') {
-              updated[lastIndex] = {
-                ...updated[lastIndex],
-                content: textContent,
-              }
-            }
-            return updated
-          })
-        } else {
-          // Collect data stream parts for artifacts
-          streamParts.push(chunk)
-          setStreamData(streamParts)
-        }
-      }
-
-    } catch (err) {
-      console.error("Failed to send message:", err)
-      setError(err instanceof Error ? err : new Error('Unknown error'))
-      setMessages(prev => prev.filter(m => m.content !== ''))
-    } finally {
-      setIsLoading(false)
-    }
+    sendMessage({ text: message })
   }
 
   return (
@@ -175,14 +99,22 @@ export function ChatInterface({
               </div>
             )}
 
-            {messages.map((message) => (
-              <Message
-                key={message.id}
-                role={message.role}
-                content={message.content}
-                timestamp={new Date()}
-              />
-            ))}
+            {messages.map((message) => {
+              // Extract text content from message parts
+              const textContent = message.parts
+                .filter((part: any) => part.type === 'text')
+                .map((part: any) => part.text)
+                .join('')
+
+              return (
+                <Message
+                  key={message.id}
+                  role={message.role}
+                  content={textContent}
+                  timestamp={new Date()}
+                />
+              )
+            })}
 
             {isLoading && messages[messages.length - 1]?.role !== 'assistant' && (
               <div className="flex items-center gap-3">

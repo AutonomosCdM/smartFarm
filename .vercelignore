@@ -1,0 +1,28 @@
+# Vercel Ignore File
+# Files and directories to exclude from deployment
+
+# Documentation (not needed in production)
+*.md
+!README.md
+
+# Testing files
+app/test-artifacts/
+
+# Database scripts (run separately)
+scripts/
+
+# Local environment files
+.env.local
+.env*.local
+
+# Editor files
+.vscode/
+.idea/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Supabase local files (not needed in production)
+supabase/.gitignore
+supabase/config.toml

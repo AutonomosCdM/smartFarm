@@ -21,44 +21,59 @@ export function DataStreamHandler({ streamParts }: DataStreamHandlerProps) {
 
     // Process each stream part
     streamParts.forEach((streamPart) => {
-      // Handle generic artifact updates
-      if (streamPart.type === 'artifact-id') {
-        setArtifact((draft) => ({
-          ...draft,
-          id: streamPart.data,
-        }));
-      } else if (streamPart.type === 'artifact-title') {
-        setArtifact((draft) => ({
-          ...draft,
-          title: streamPart.data,
-        }));
-      } else if (streamPart.type === 'artifact-kind') {
-        setArtifact((draft) => ({
-          ...draft,
-          kind: streamPart.data,
-          isVisible: true,
-        }));
+      // Handle data stream parts with custom types
+      if (streamPart.type === 'data' && streamPart.content) {
+        const content = streamPart.content as any;
 
-        // Get artifact definition and call onStreamPart
-        const definition = getArtifactDefinition(streamPart.data);
-        if (definition?.onStreamPart) {
-          definition.onStreamPart({
-            streamPart,
-            setArtifact,
-          });
-        }
-      } else {
-        // For all other stream parts, delegate to artifact-specific handler
-        setArtifact((draft) => {
-          const definition = getArtifactDefinition(draft.kind);
+        // Handle generic artifact updates
+        if (content.type === 'artifact-id') {
+          setArtifact((draft) => ({
+            ...draft,
+            id: content.content,
+          }));
+        } else if (content.type === 'artifact-title') {
+          setArtifact((draft) => ({
+            ...draft,
+            title: content.content,
+          }));
+        } else if (content.type === 'artifact-kind') {
+          setArtifact((draft) => ({
+            ...draft,
+            kind: content.content,
+            isVisible: true,
+          }));
+
+          // Get artifact definition and call onStreamPart
+          const definition = getArtifactDefinition(content.content);
           if (definition?.onStreamPart) {
             definition.onStreamPart({
               streamPart,
               setArtifact,
             });
           }
-          return draft;
-        });
+        } else if (content.type === 'artifact-clear') {
+          setArtifact((draft) => ({
+            ...draft,
+            content: '',
+          }));
+        } else if (content.type === 'artifact-finish') {
+          setArtifact((draft) => ({
+            ...draft,
+            status: 'idle',
+          }));
+        } else {
+          // For all other stream parts, delegate to artifact-specific handler
+          setArtifact((draft) => {
+            const definition = getArtifactDefinition(draft.kind);
+            if (definition?.onStreamPart) {
+              definition.onStreamPart({
+                streamPart,
+                setArtifact,
+              });
+            }
+            return draft;
+          });
+        }
       }
     });
   }, [streamParts, setArtifact]);

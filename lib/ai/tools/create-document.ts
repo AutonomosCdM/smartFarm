@@ -10,31 +10,31 @@ type CreateDocumentProps = {
 export const createDocument = ({ dataStream }: CreateDocumentProps) =>
   tool({
     description: 'Create a document or artifact (spreadsheet, chart, etc.) for the user',
-    parameters: z.object({
-      title: z.string(),
-      kind: z.enum(artifactKinds),
+    inputSchema: z.object({
+      title: z.string().describe('Brief descriptive title for the document in Spanish'),
+      kind: z.enum(artifactKinds).describe('Type of artifact: sheet for tables/spreadsheets, chart for visualizations'),
     }),
-    execute: async ({ title, kind }: { title: string; kind: ArtifactKind }) => {
+    execute: async ({ title, kind }) => {
       const id = `artifact_${Date.now()}_${Math.random().toString(36).substring(7)}`;
 
-      dataStream.write({
+      dataStream.writeData({
         type: 'artifact-kind',
-        data: kind,
+        content: kind,
       });
 
-      dataStream.write({
+      dataStream.writeData({
         type: 'artifact-id',
-        data: id,
+        content: id,
       });
 
-      dataStream.write({
+      dataStream.writeData({
         type: 'artifact-title',
-        data: title,
+        content: title,
       });
 
-      dataStream.write({
+      dataStream.writeData({
         type: 'artifact-clear',
-        data: null,
+        content: null,
       });
 
       const handler = getDocumentHandler(kind);
@@ -48,9 +48,9 @@ export const createDocument = ({ dataStream }: CreateDocumentProps) =>
         dataStream,
       });
 
-      dataStream.write({
+      dataStream.writeData({
         type: 'artifact-finish',
-        data: null,
+        content: null,
       });
 
       return {

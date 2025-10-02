@@ -18,13 +18,16 @@ export const sheetArtifact = new Artifact({
 
   onStreamPart: ({ streamPart, setArtifact }) => {
     // Handle sheet-specific delta updates
-    if (streamPart.type === 'data-sheetDelta') {
-      setArtifact((draft) => ({
-        ...draft,
-        content: streamPart.data,
-        isVisible: true,
-        status: 'streaming',
-      }));
+    if (streamPart.type === 'data' && streamPart.content) {
+      const content = streamPart.content as any;
+      if (content.type === 'sheetDelta') {
+        setArtifact((draft) => ({
+          ...draft,
+          content: content.content,
+          isVisible: true,
+          status: 'streaming',
+        }));
+      }
     }
     // Note: artifact-kind, artifact-id, artifact-title, artifact-clear, artifact-finish
     // are handled by the DataStreamHandler, not here
