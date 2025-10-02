@@ -17,10 +17,9 @@ export const chartArtifact = new Artifact({
   onStreamPart: ({ streamPart, setArtifact }) => {
     // Handle chart-specific delta updates
     if (streamPart.type === 'artifact-delta') {
-      const delta = streamPart.delta as any;
       setArtifact((draft) => ({
         ...draft,
-        content: delta,
+        content: streamPart.data,
         isVisible: true,
         status: 'streaming',
       }));

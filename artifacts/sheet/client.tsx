@@ -19,10 +19,9 @@ export const sheetArtifact = new Artifact({
   onStreamPart: ({ streamPart, setArtifact }) => {
     // Handle sheet-specific delta updates
     if (streamPart.type === 'artifact-delta') {
-      const delta = streamPart.delta as any;
       setArtifact((draft) => ({
         ...draft,
-        content: delta,
+        content: streamPart.data,
         isVisible: true,
         status: 'streaming',
       }));
