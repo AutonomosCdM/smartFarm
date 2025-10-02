@@ -24,17 +24,17 @@ export function ArtifactDisplay() {
   const ContentComponent = definition.content;
 
   const handleClose = () => {
-    setArtifact((draft) => ({
-      ...draft,
-      isVisible: false,
-    }));
+    setArtifact((draft) => {
+      draft.isVisible = false;
+      return draft;
+    });
   };
 
   const handleSaveContent = async (content: string, debounce?: boolean) => {
-    setArtifact((draft) => ({
-      ...draft,
-      content,
-    }));
+    setArtifact((draft) => {
+      draft.content = content;
+      return draft;
+    });
 
     // TODO: Save to database
     if (!debounce) {
