@@ -16,16 +16,14 @@ export const chartArtifact = new Artifact({
 
   onStreamPart: ({ streamPart, setArtifact }) => {
     // Handle chart-specific delta updates
-    if (streamPart.type === 'data' && streamPart.content) {
-      const content = streamPart.content as any;
-      if (content.type === 'chartDelta') {
-        setArtifact((draft) => ({
-          ...draft,
-          content: content.content,
-          isVisible: true,
-          status: 'streaming',
-        }));
-      }
+    if (streamPart.type === 'artifact-delta') {
+      const delta = streamPart.delta as any;
+      setArtifact((draft) => ({
+        ...draft,
+        content: delta,
+        isVisible: true,
+        status: 'streaming',
+      }));
     }
     // Note: artifact-kind, artifact-id, artifact-title, artifact-clear, artifact-finish
     // are handled by the DataStreamHandler, not here
