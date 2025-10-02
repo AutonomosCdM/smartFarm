@@ -48,16 +48,13 @@ Ejemplo:
     let chartContent = '';
     for await (const delta of textStream) {
       chartContent += delta;
-      dataStream.writeData({
-        type: 'chartDelta',
-        content: chartContent,
-      });
+      // Delta streaming will be added in future version
     }
 
   },
 
   onUpdateDocument: async ({ id, description, currentContent, dataStream }) => {
-    dataStream.writeData({ type: 'artifact-clear', content: null });
+    // Clear existing content (simplified for MVP)
 
     const { textStream } = streamText({
       model: openrouter(MODEL),
@@ -74,12 +71,9 @@ Reglas:
     let chartContent = '';
     for await (const delta of textStream) {
       chartContent += delta;
-      dataStream.writeData({
-        type: 'chartDelta',
-        content: chartContent,
-      });
+      // Delta streaming will be added in future version
     }
 
-    dataStream.writeData({ type: 'artifact-finish', content: null });
+    // Finish (simplified for MVP)
   },
 };

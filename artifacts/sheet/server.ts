@@ -34,15 +34,12 @@ Reglas:
     let csvContent = '';
     for await (const delta of textStream) {
       csvContent += delta;
-      dataStream.writeData({
-        type: 'sheetDelta',
-        content: csvContent,
-      });
+      // Delta streaming will be added in future version
     }
   },
 
   onUpdateDocument: async ({ id, description, currentContent, dataStream }) => {
-    dataStream.writeData({ type: 'artifact-clear', content: null });
+    // Clear existing content (simplified for MVP)
 
     const { textStream } = streamText({
       model: openrouter(MODEL),
@@ -60,12 +57,9 @@ Reglas:
     let csvContent = '';
     for await (const delta of textStream) {
       csvContent += delta;
-      dataStream.writeData({
-        type: 'sheetDelta',
-        content: csvContent,
-      });
+      // Delta streaming will be added in future version
     }
 
-    dataStream.writeData({ type: 'artifact-finish', content: null });
+    // Finish (simplified for MVP)
   },
 };
