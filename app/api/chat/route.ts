@@ -94,11 +94,10 @@ Examples:
         const modelMessages = convertToModelMessages(messages);
 
         const result = streamTextFn({
-          model: openrouter('google/gemini-2.0-flash-exp:free'),
+          model: openrouter('meta-llama/llama-4-maverick:free'),
           messages: modelMessages,
           system: artifactSystemPrompt,
           temperature: 0.7,
-          maxSteps: 5,
           tools: {
             createDocument: createDocument({ dataStream }),
           },

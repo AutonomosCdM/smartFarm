@@ -6,8 +6,8 @@ const openrouter = createOpenRouter({
   apiKey: process.env.OPENROUTER_API_KEY,
 });
 
-// Use free Gemini model
-const MODEL = 'google/gemini-2.0-flash-exp:free';
+// Use free Llama 4 Maverick model
+const MODEL = 'meta-llama/llama-4-maverick:free';
 
 /**
  * Chart document handler for server-side generation
