@@ -22,27 +22,34 @@ cp .env.example .env
 # GROQ_API_KEY=your_actual_groq_api_key_here
 ```
 
-### Step 2: Access Admin Panel
+### Step 2: Access Open WebUI
 
+**Local Installation:**
 1. Open http://localhost:3001 in your browser
+
+**Production Instance:**
+1. Open https://smartfarm.autonomos.dev in your browser
+
 2. Create your account (first user becomes administrator automatically)
-3. Click on your **avatar** in the bottom left corner
-4. Select **"Admin Panel"**
 
-### Step 3: Add Groq Connection
+### Step 3: Configure Groq API in UI
 
-1. In the admin panel, go to **Settings → Connections**
-2. Click **"+ Add Connection"**
-3. Select **"OpenAI Compatible"** as the provider type
+**IMPORTANT**: Groq must be configured through the web interface, not just the `.env` file.
+
+1. Click on your **Settings** icon (⚙️) in the top right corner
+2. Go to **Connections** section
+3. Under **OpenAI API**, click to add a new connection
 4. Fill in the details:
-   - **Name**: `Groq`
    - **API Base URL**: `https://api.groq.com/openai/v1`
-   - **API Key**: (paste your Groq API key from `.env`)
-5. Click **"Save"** or **"Verify Connection"**
+   - **API Key**: `gsk_YOUR_GROQ_API_KEY_HERE`
+5. Click **Save**
 
-### Step 4: Select Models
+### Step 4: Verify Connection
 
-Once configured, you'll see Groq models available in the model selector dropdown.
+1. Go back to the main chat interface
+2. Click on **"Select a model"** dropdown
+3. You should see Groq models listed (llama-3.3-70b-versatile, etc.)
+4. Select a model and start chatting!
 
 ---
 

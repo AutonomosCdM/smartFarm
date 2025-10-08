@@ -7,9 +7,11 @@ Complete guide to deploy SmartFarm AI on your production server.
 ## 🎯 Overview
 
 This guide will help you deploy SmartFarm AI to:
-- **Server**: 34.200.33.195
+- **Platform**: AWS Lightsail VPS
+- **Server**: 54.173.46.123
 - **Domain**: smartfarm.autonomos.dev
-- **Architecture**: Docker + Nginx + CloudFront (optional)
+- **Architecture**: Docker + Nginx + Let's Encrypt SSL
+- **Production URL**: https://smartfarm.autonomos.dev
 
 ---
 
@@ -136,68 +138,90 @@ sudo /tmp/setup-nginx.sh
 
 ---
 
-### Step 6: Choose Your SSL/CloudFront Strategy
+### Step 6: Install SSL Certificate with Let's Encrypt
 
-You have **two options**:
-
-#### **Option A: Using CloudFront (Current Setup)**
-
-Since you already have CloudFront configured:
-
-1. **Update CloudFront Origin**:
-   - Go to AWS CloudFront Console
-   - Select your distribution: `d1ghj182fliscw.cloudfront.net`
-   - Edit Origin:
-     - **Origin Domain**: `34.200.33.195`
-     - **Origin Protocol**: HTTP
-     - **Origin Port**: 3001 (or 80 if using Nginx)
-
-2. **Keep DNS as is**:
-   - CNAME: `www` → `d1ghj182fliscw.cloudfront.net`
-   - A Record: `smartfarm` → `34.200.33.195`
-
-3. **SSL**: Already handled by ACM certificate
-
-**Pros**: Global CDN, better performance, AWS-managed SSL
-**Cons**: Slightly more complex setup
-
----
-
-#### **Option B: Direct Nginx with Let's Encrypt (Simpler)**
-
-If you prefer direct access without CloudFront:
-
-1. **Update DNS** (remove CloudFront):
-   - A Record: `smartfarm` → `34.200.33.195`
-   - Remove CNAME or point to main domain
-
-2. **Install SSL Certificate**:
+**IMPORTANT**: HTTPS is required for production. Modern browsers may block HTTP-only sites.
 
 ```bash
 # Install Certbot
 sudo apt-get update
 sudo apt-get install -y certbot python3-certbot-nginx
 
-# Get SSL certificate
-sudo certbot --nginx -d smartfarm.autonomos.dev
-
-# Follow prompts:
-# - Enter email
-# - Agree to terms
-# - Choose to redirect HTTP to HTTPS
+# Generate SSL certificate and configure Nginx automatically
+sudo certbot --nginx -d smartfarm.autonomos.dev --non-interactive --agree-tos --email admin@autonomos.dev --redirect
 ```
 
-3. **Certbot** will automatically:
-   - Get SSL certificate from Let's Encrypt
-   - Configure Nginx
-   - Set up auto-renewal
-
-**Pros**: Simpler setup, direct access
-**Cons**: No CDN benefits
+**What this does:**
+1. ✅ Generates free SSL certificate from Let's Encrypt
+2. ✅ Configures Nginx with HTTPS
+3. ✅ Sets up HTTP → HTTPS redirect
+4. ✅ Configures auto-renewal (runs every 90 days)
 
 ---
 
-### Step 7: Test Your Deployment
+### Step 7: Open HTTPS Port (Port 443)
+
+**For AWS Lightsail:**
+
+```bash
+# Using AWS CLI
+aws lightsail open-instance-public-ports \
+  --instance-name smartfarm \
+  --port-info fromPort=443,toPort=443,protocol=TCP
+```
+
+**Or via Lightsail Console:**
+1. Go to Lightsail console
+2. Select your instance
+3. Go to **Networking** tab
+4. Add firewall rule: Port 443, TCP
+
+---
+
+### Step 8: Test Your Deployment
+
+**Test HTTPS access:**
+
+```bash
+# From your local machine
+curl -I https://smartfarm.autonomos.dev
+
+# Should return: HTTP/1.1 200 OK
+```
+
+**Open in browser:**
+1. Go to https://smartfarm.autonomos.dev
+2. You should see Open WebUI login/signup page
+3. Certificate should be valid (green padlock)
+
+---
+
+### Step 9: Configure Groq API in UI
+
+1. Create your admin account (first user)
+2. Click **Settings** (⚙️) in top right
+3. Go to **Connections**
+4. Add OpenAI API connection:
+   - **API Base URL**: `https://api.groq.com/openai/v1`
+   - **API Key**: Your Groq API key
+5. Save and test
+
+Models will appear in the dropdown automatically.
+
+---
+
+## 🎯 Quick Deployment Script
+
+For fast deployment, run this single command:
+
+```bash
+# From your local machine
+ssh -i ~/path/to/key.pem ubuntu@YOUR_SERVER_IP 'bash -s' < <(curl -fsSL https://raw.githubusercontent.com/AutonomosCdM/smartFarm/main/deployment/deploy.sh)
+```
+
+---
+
+## ✅ Post-Deployment Checklist
 
 ```bash
 # From your server

@@ -13,9 +13,10 @@ SmartFarm is an intelligent agricultural management system powered by advanced A
 - **🤖 Multiple AI Models**: Access to 20+ models including Llama 3.3, DeepSeek R1, Gemma, and more
 - **💾 Data Persistence**: All conversations and configurations saved permanently
 - **🌐 Web Interface**: Modern, responsive UI through Open WebUI
-- **🔒 Secure**: API keys protected, environment variables isolated
+- **🔒 Secure**: HTTPS with Let's Encrypt SSL, API keys protected
 - **📊 Context Management**: Support for up to 262K token contexts
 - **🎯 Agricultural Focus**: Optimized for farming and agricultural applications
+- **☁️ Production Ready**: AWS Lightsail deployment with auto-renewal SSL
 
 ## 📋 Prerequisites
 
@@ -94,9 +95,19 @@ http://localhost:3001
 
 - [Installation Guide](docs/INSTALLATION.md) - Detailed installation instructions
 - [Groq Configuration](docs/GROQ_CONFIGURATION.md) - Complete Groq API setup guide
+- [Production Deployment](docs/PRODUCTION_DEPLOYMENT.md) - Deploy to AWS with HTTPS
 - [Available Models](docs/MODELS.md) - List of all available AI models
 - [Troubleshooting](docs/TROUBLESHOOTING.md) - Common issues and solutions
 - [Contributing](CONTRIBUTING.md) - How to contribute to the project
+
+## 🌐 Live Demo
+
+**Production Instance**: [https://smartfarm.autonomos.dev](https://smartfarm.autonomos.dev)
+
+- Deployed on AWS Lightsail
+- HTTPS with Let's Encrypt SSL
+- Auto-renewal configured
+- 24/7 availability
 
 ## 🤖 Available AI Models
 
