@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: ${OPENWEBUI_CONTAINER_NAME:-open-webui}
+    restart: always
+    ports:
+      - "${OPENWEBUI_PORT:-3001}:8080"
+    volumes:
+      - open-webui:/app/backend/data
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      - WEBUI_NAME=SmartFarm AI
+      - WEBUI_URL=http://localhost:${OPENWEBUI_PORT:-3001}
+      # Optional: Pre-configure environment variables
+      # - OPENAI_API_KEY=${OPENAI_API_KEY}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - smartfarm-network
+
+volumes:
+  open-webui:
+    name: ${OPENWEBUI_VOLUME_NAME:-open-webui}
+    driver: local
+
+networks:
+  smartfarm-network:
+    driver: bridge
