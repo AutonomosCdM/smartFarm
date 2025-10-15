@@ -1,6 +1,6 @@
 #!/bin/bash
 # SmartFarm - Production Deployment Script
-# Run this script on your server (34.200.33.195)
+# Supports both manual deployment and CI/CD automation
 
 set -e
 
@@ -11,14 +11,27 @@ RED='\033[0;31m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
+# Detect if running in CI/CD
+CI_MODE=${CI_MODE:-false}
+if [ -n "$GITHUB_ACTIONS" ] || [ -n "$CI" ]; then
+    CI_MODE=true
+fi
+
 echo -e "${GREEN}🌾 SmartFarm Production Deployment${NC}"
 echo "========================================"
+[ "$CI_MODE" = true ] && echo "Running in CI/CD mode"
 echo ""
 
 # Configuration
 REPO_URL="https://github.com/AutonomosCdM/smartFarm.git"
 INSTALL_DIR="/opt/smartfarm"
 BACKUP_DIR="/opt/smartfarm-backup-$(date +%Y%m%d_%H%M%S)"
+
+# Exit codes
+EXIT_SUCCESS=0
+EXIT_DOCKER_FAILED=10
+EXIT_DEPLOYMENT_FAILED=11
+EXIT_HEALTH_CHECK_FAILED=12
 
 # Check if running as root
 if [ "$EUID" -ne 0 ]; then
@@ -87,9 +100,13 @@ echo -e "${GREEN}✅ Repository updated${NC}"
 echo -e "${YELLOW}⚙️  Configuring environment...${NC}"
 if [ ! -f ".env" ]; then
     cp .env.example .env
-    echo -e "${YELLOW}📝 IMPORTANT: Edit .env file and add your Groq API key${NC}"
-    echo -e "${YELLOW}   nano $INSTALL_DIR/.env${NC}"
-    read -p "Press Enter after you've added your API key..."
+    if [ "$CI_MODE" = false ]; then
+        echo -e "${YELLOW}📝 IMPORTANT: Edit .env file and add your Groq API key${NC}"
+        echo -e "${YELLOW}   nano $INSTALL_DIR/.env${NC}"
+        read -p "Press Enter after you've added your API key..."
+    else
+        echo -e "${YELLOW}⚠️  .env file created from template. Ensure secrets are configured!${NC}"
+    fi
 else
     echo -e "${GREEN}✅ .env file already exists${NC}"
 fi
@@ -110,13 +127,46 @@ docker-compose up -d
 echo -e "${YELLOW}⏳ Waiting for service to start...${NC}"
 sleep 10
 
-# 11. Check status
-if docker ps | grep -q "open-webui"; then
-    echo -e "${GREEN}✅ SmartFarm is running!${NC}"
-else
-    echo -e "${RED}❌ Failed to start SmartFarm${NC}"
+# 11. Check container status
+echo -e "${YELLOW}🔍 Checking container status...${NC}"
+if ! docker ps | grep -q "open-webui"; then
+    echo -e "${RED}❌ Container failed to start${NC}"
     echo "Check logs: docker-compose logs"
-    exit 1
+    exit $EXIT_DOCKER_FAILED
+fi
+echo -e "${GREEN}✅ Container is running${NC}"
+
+# 12. Health check
+echo -e "${YELLOW}🏥 Performing health check...${NC}"
+MAX_ATTEMPTS=6
+ATTEMPT=0
+HEALTH_CHECK_SUCCESS=false
+
+while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
+    ATTEMPT=$((ATTEMPT + 1))
+    echo "Attempt $ATTEMPT/$MAX_ATTEMPTS..."
+
+    # Check local port
+    if curl -f -s http://localhost:3001 > /dev/null 2>&1; then
+        echo -e "${GREEN}✅ Health check passed!${NC}"
+        HEALTH_CHECK_SUCCESS=true
+        break
+    fi
+
+    if [ $ATTEMPT -lt $MAX_ATTEMPTS ]; then
+        echo "Waiting 10 seconds before retry..."
+        sleep 10
+    fi
+done
+
+if [ "$HEALTH_CHECK_SUCCESS" = false ]; then
+    echo -e "${RED}❌ Health check failed after $MAX_ATTEMPTS attempts${NC}"
+    echo "Container status:"
+    docker-compose ps
+    echo ""
+    echo "Recent logs:"
+    docker-compose logs --tail=20
+    exit $EXIT_HEALTH_CHECK_FAILED
 fi
 
 echo ""
@@ -126,15 +176,19 @@ echo ""
 echo -e "${BLUE}📊 Service Status:${NC}"
 docker-compose ps
 echo ""
-echo -e "${BLUE}📝 Next Steps:${NC}"
-echo "1. Configure Nginx reverse proxy (see nginx.conf)"
-echo "2. Test locally: curl http://localhost:3001"
-echo "3. Access: https://smartfarm.autonomos.dev"
-echo ""
-echo -e "${BLUE}🔧 Useful Commands:${NC}"
-echo "  View logs:    cd $INSTALL_DIR && docker-compose logs -f"
-echo "  Restart:      cd $INSTALL_DIR && docker-compose restart"
-echo "  Stop:         cd $INSTALL_DIR && docker-compose down"
-echo "  Update:       cd $INSTALL_DIR && git pull && docker-compose up -d"
-echo ""
-echo -e "${YELLOW}⚠️  Don't forget to configure Nginx!${NC}"
+
+if [ "$CI_MODE" = false ]; then
+    echo -e "${BLUE}📝 Next Steps:${NC}"
+    echo "1. Configure Nginx reverse proxy (see nginx.conf)"
+    echo "2. Test locally: curl http://localhost:3001"
+    echo "3. Access: https://smartfarm.autonomos.dev"
+    echo ""
+    echo -e "${BLUE}🔧 Useful Commands:${NC}"
+    echo "  View logs:    cd $INSTALL_DIR && docker-compose logs -f"
+    echo "  Restart:      cd $INSTALL_DIR && docker-compose restart"
+    echo "  Stop:         cd $INSTALL_DIR && docker-compose down"
+    echo "  Update:       cd $INSTALL_DIR && git pull && docker-compose up -d"
+    echo ""
+fi
+
+exit $EXIT_SUCCESS

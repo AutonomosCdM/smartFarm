@@ -1,0 +1,89 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:  # Allow manual trigger
+
+env:
+  DOCKER_COMPOSE_VERSION: "2.24.0"
+
+jobs:
+  deploy:
+    name: Deploy to AWS Lightsail
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2  # Need previous commit for rollback
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Test SSH Connection
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
+            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
+            "echo 'SSH connection successful'"
+
+      - name: Deploy to Production
+        id: deploy
+        run: |
+          ssh -i ~/.ssh/deploy_key \
+            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
+            "cd ${{ secrets.DEPLOY_PATH }} && \
+             git fetch origin && \
+             git checkout main && \
+             git pull origin main && \
+             sudo ./deployment/deploy.sh"
+
+      - name: Health Check
+        id: health_check
+        run: |
+          echo "Waiting for services to start..."
+          sleep 15
+
+          # Try health check up to 6 times (60 seconds total)
+          for i in {1..6}; do
+            if curl -f -s -o /dev/null -w "%{http_code}" https://smartfarm.autonomos.dev | grep -q "200\|301\|302"; then
+              echo "Health check passed!"
+              exit 0
+            fi
+            echo "Attempt $i failed, retrying in 10 seconds..."
+            sleep 10
+          done
+
+          echo "Health check failed after 60 seconds"
+          exit 1
+
+      - name: Rollback on Failure
+        if: failure() && steps.deploy.conclusion == 'success'
+        run: |
+          echo "Deployment failed, rolling back..."
+          ssh -i ~/.ssh/deploy_key \
+            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
+            "cd ${{ secrets.DEPLOY_PATH }} && \
+             git reset --hard HEAD~1 && \
+             sudo ./deployment/deploy.sh"
+          echo "Rollback completed"
+
+      - name: Cleanup
+        if: always()
+        run: |
+          rm -f ~/.ssh/deploy_key
+
+      - name: Deployment Summary
+        if: always()
+        run: |
+          if [ "${{ job.status }}" == "success" ]; then
+            echo "✅ Deployment successful to https://smartfarm.autonomos.dev"
+          else
+            echo "❌ Deployment failed and rolled back"
+          fi
