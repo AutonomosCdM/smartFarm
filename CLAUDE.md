@@ -21,6 +21,7 @@ SmartFarm is an AI agricultural assistant with **two deployment options:**
 - **Infrastructure Options**:
   - Docker Compose + Nginx (simple)
   - Kubernetes (k3s) + Nginx (production)
+- **CI/CD**: GitHub Actions (automatic deployment on push to main)
 - **Data Ingestion** (k3s only):
   - castai/openwebui-content-sync (folder monitoring, SHA256 diffing)
   - Kubernetes CronJobs (scheduled downloads)
@@ -291,14 +292,18 @@ See `docs/MODELS.md` for complete model catalog (20+ models available).
 ```
 smartFarm_v5/
 ├── .env.example              # Environment template
-├── .gitignore               # Git ignore rules (.env, secrets, backups)
+├── .gitignore               # Git ignore rules (.env, secrets, backups, data/)
 ├── docker-compose.yml        # Docker Compose config (simple deployment)
 ├── README.md                # User-facing documentation
 ├── CLAUDE.md                # This file (guidance for Claude Code)
 ├── LICENSE                  # MIT license
 │
+├── .github/                 # GitHub configuration
+│   └── workflows/          # GitHub Actions CI/CD
+│       └── deploy-production.yml  # Automatic deployment workflow
+│
 ├── deployment/              # Deployment automation
-│   ├── deploy.sh           # Docker Compose deployment
+│   ├── deploy.sh           # Docker Compose deployment (CI/CD compatible)
 │   ├── setup-nginx.sh      # Nginx reverse proxy setup
 │   ├── k3s-deploy.sh       # Fresh k3s deployment
 │   ├── migrate-to-k3s.sh   # Docker → k3s migration
@@ -359,6 +364,7 @@ smartFarm_v5/
 ```
 
 **Key Points:**
+- **Automatic deployment:** GitHub Actions CI/CD with health checks and rollback
 - **Two deployment options:** Docker Compose (simple) or k3s (production)
 - **Extensible data pipeline:** Add unlimited data sources without changing infrastructure
 - **Example-specific docs archived:** FEGOSA/Consorcio docs in `docs/archive/proof-of-concept/`
@@ -371,10 +377,12 @@ smartFarm_v5/
 ## Security Considerations
 
 1. **API Key Protection**: `.env` is gitignored and must NEVER be committed. GitHub secret scanning is enabled.
-2. **SSL/HTTPS**: Production uses Let's Encrypt with auto-renewal via certbot cron job.
-3. **Firewall**: Production server requires ports 80 (HTTP), 443 (HTTPS), and 22 (SSH) open.
-4. **First User Admin**: First user to sign up automatically becomes admin—secure production before making public.
-5. **WebSocket Security**: Nginx configuration includes WebSocket upgrade headers for secure real-time communication.
+2. **GitHub Secrets**: SSH keys and deployment credentials stored as GitHub Actions secrets (SSH_PRIVATE_KEY, SSH_HOST, SSH_USER, DEPLOY_PATH).
+3. **SSL/HTTPS**: Production uses Let's Encrypt with auto-renewal via certbot cron job.
+4. **Firewall**: Production server requires ports 80 (HTTP), 443 (HTTPS), and 22 (SSH) open.
+5. **First User Admin**: First user to sign up automatically becomes admin—secure production before making public.
+6. **WebSocket Security**: Nginx configuration includes WebSocket upgrade headers for secure real-time communication.
+7. **Data Files**: `data/` and `config/*.{json,yaml}` are gitignored to prevent accidental commits of sensitive data.
 
 ## Development Workflow
 
@@ -401,11 +409,21 @@ This is an infrastructure project with minimal code changes. Most work involves:
 2. Update `CLAUDE.md` when architecture or workflows change
 3. Update `README.md` for user-facing feature changes
 
-### Production Deployment
+### Production Deployment (Automatic - CI/CD)
+
+**Normal workflow (recommended):**
 1. Push changes to `main` branch on GitHub
-2. SSH to production: `ssh -i ~/Downloads/smartfarm-key.pem ubuntu@54.173.46.123`
-3. Run deployment: `cd /opt/smartfarm && sudo ./deployment/deploy.sh`
-4. Verify at https://smartfarm.autonomos.dev
+2. GitHub Actions automatically deploys to production
+3. Health checks verify deployment success
+4. Automatic rollback if deployment fails
+5. Verify at https://smartfarm.autonomos.dev
+
+**Manual deployment (fallback):**
+1. SSH to production: `ssh -i ~/Downloads/smartfarm-key.pem ubuntu@54.173.46.123`
+2. Run deployment: `cd /opt/smartfarm && sudo ./deployment/deploy.sh`
+3. Verify at https://smartfarm.autonomos.dev
+
+See "CI/CD Pipeline" section below for details.
 
 ## Production URLs
 
@@ -413,6 +431,172 @@ This is an infrastructure project with minimal code changes. Most work involves:
 - **Server IP**: 54.173.46.123 (AWS Lightsail)
 - **SSH Access**: `ssh -i ~/Downloads/smartfarm-key.pem ubuntu@54.173.46.123`
 - **Local Development**: http://localhost:3001
+
+## CI/CD Pipeline
+
+SmartFarm uses **GitHub Actions for automatic deployment** to production. Push to `main` branch triggers automatic deployment with health checks and rollback capability.
+
+### How It Works
+
+```
+Push to main → GitHub Actions → SSH Deploy → Health Check → ✅ Success or ⏮️ Rollback
+```
+
+**Workflow:** `.github/workflows/deploy-production.yml`
+
+**Steps:**
+1. **Checkout code** from GitHub repository
+2. **Setup SSH** with secrets (SSH_PRIVATE_KEY, SSH_HOST, SSH_USER, DEPLOY_PATH)
+3. **Test SSH connection** to production server
+4. **Deploy to production:**
+   - Git pull latest changes
+   - Run `deployment/deploy.sh` with CI/CD mode
+   - Deploy script includes health checks (6 attempts, 60 seconds)
+5. **Health check** from GitHub Actions (additional verification)
+6. **Rollback** if deployment or health checks fail
+
+### GitHub Secrets Configuration
+
+Required secrets in repository settings (Settings → Secrets → Actions):
+
+```
+SSH_PRIVATE_KEY = [contents of smartfarm-key.pem]
+SSH_HOST = 54.173.46.123
+SSH_USER = ubuntu
+DEPLOY_PATH = /opt/smartfarm
+```
+
+**Note:** Secrets are already configured and working.
+
+### Monitoring Deployments
+
+```bash
+# View recent deployments
+gh run list --limit 10
+
+# Watch deployment in real-time
+gh run watch
+
+# View specific deployment logs
+gh run view RUN_ID --log
+
+# View latest deployment
+gh run view --log
+
+# Check deployment status
+gh run list --limit 1
+
+# View in browser
+open https://github.com/AutonomosCdM/smartFarm/actions
+```
+
+### Deployment Features
+
+**✅ Automatic Triggers:**
+- Push to `main` branch
+- Manual trigger via GitHub UI (workflow_dispatch)
+
+**✅ Health Checks:**
+- Local health check in deploy script (6 attempts, 60 seconds)
+- GitHub Actions health check (6 attempts, 60 seconds)
+- Checks both HTTP 200/301/302 responses
+
+**✅ Rollback Mechanism:**
+- Automatic rollback if health check fails
+- Git reset to previous commit
+- Re-run deployment script
+- Preserves data (only code rolls back)
+
+**✅ CI/CD Mode Detection:**
+- Deploy script detects CI/CD environment
+- Skips interactive prompts
+- Proper exit codes for automation
+- Verbose logging for debugging
+
+### Manual Deployment (Fallback)
+
+If GitHub Actions is unavailable:
+
+```bash
+# SSH to server
+ssh -i ~/Downloads/smartfarm-key.pem ubuntu@54.173.46.123
+
+# Pull and deploy
+cd /opt/smartfarm
+sudo git pull origin main
+sudo ./deployment/deploy.sh
+```
+
+### Troubleshooting CI/CD
+
+**Deployment fails with SSH errors:**
+```bash
+# Verify secrets are configured
+gh secret list
+
+# Test SSH connection manually
+ssh -i ~/Downloads/smartfarm-key.pem ubuntu@54.173.46.123 "echo 'SSH works'"
+```
+
+**Health check fails but service is running:**
+```bash
+# Check if service is accessible
+curl -I https://smartfarm.autonomos.dev
+
+# Check container status
+ssh -i ~/Downloads/smartfarm-key.pem ubuntu@54.173.46.123 "docker ps"
+
+# View container logs
+ssh -i ~/Downloads/smartfarm-key.pem ubuntu@54.173.46.123 "docker logs open-webui --tail 50"
+```
+
+**Workflow stuck or failed:**
+```bash
+# View workflow logs
+gh run view --log
+
+# Cancel stuck workflow
+gh run cancel
+
+# Re-trigger deployment
+git commit --allow-empty -m "trigger: re-deploy"
+git push origin main
+```
+
+**Permission errors in deployment:**
+- Deploy script runs with sudo
+- Git operations also use sudo for consistency
+- `/opt/smartfarm` is owned by root
+
+### Deployment Best Practices
+
+1. **Always test locally first:**
+   ```bash
+   docker-compose down && docker-compose up -d
+   ```
+
+2. **Use feature branches for development:**
+   ```bash
+   git checkout -b feature/my-feature
+   # Make changes
+   git push origin feature/my-feature
+   # Create PR to main
+   ```
+
+3. **Monitor deployments:**
+   ```bash
+   gh run watch  # Keep open during deployment
+   ```
+
+4. **Backup before major changes:**
+   ```bash
+   ./scripts/backup.sh  # Run locally or on server
+   ```
+
+5. **Verify deployment success:**
+   ```bash
+   curl -I https://smartfarm.autonomos.dev  # Should return 200/301/302
+   ```
 
 ## Troubleshooting Quick Reference
 

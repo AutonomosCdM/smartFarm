@@ -81,6 +81,194 @@ docker restart open-webui
 
 ---
 
+## 🚀 CI/CD Deployment Issues
+
+### Deployment Workflow Failed
+
+**Symptoms**: GitHub Actions deployment workflow shows red X
+
+**Check Workflow Status**:
+
+```bash
+# View recent workflow runs
+gh run list --repo AutonomosCdM/smartFarm --limit 5
+
+# View detailed logs for failed run
+gh run view <run-id> --log --repo AutonomosCdM/smartFarm
+
+# Or view in browser:
+# https://github.com/AutonomosCdM/smartFarm/actions
+```
+
+### SSH Connection Failed
+
+**Symptoms**: Workflow fails at "Setup SSH" or "Test SSH Connection" step
+
+**Solutions**:
+
+1. **Verify GitHub Secrets**:
+   ```bash
+   # Check secrets are configured (from local machine)
+   gh secret list --repo AutonomosCdM/smartFarm
+
+   # Should show:
+   # SSH_PRIVATE_KEY
+   # SSH_HOST
+   # SSH_USER
+   # DEPLOY_PATH
+   ```
+
+2. **Test SSH Manually**:
+   ```bash
+   # Test SSH connection from local machine
+   ssh -i ~/Downloads/smartfarm-key.pem ubuntu@54.173.46.123
+   ```
+
+3. **Check Key Format**:
+   - Ensure SSH_PRIVATE_KEY is the full RSA private key
+   - Must include `-----BEGIN RSA PRIVATE KEY-----` and `-----END RSA PRIVATE KEY-----`
+   - No extra whitespace or line breaks
+
+### Health Check Failed
+
+**Symptoms**: Deployment completes but health check times out
+
+**Solutions**:
+
+1. **Check Container Status**:
+   ```bash
+   # SSH to server
+   ssh -i ~/Downloads/smartfarm-key.pem ubuntu@54.173.46.123
+
+   # Check if container is running
+   docker ps --filter "name=open-webui"
+
+   # Check container health
+   docker inspect open-webui --format='{{.State.Health.Status}}'
+   ```
+
+2. **Check Application Logs**:
+   ```bash
+   # View container logs
+   docker logs open-webui --tail 50
+
+   # Check for errors
+   docker logs open-webui | grep -i error
+   ```
+
+3. **Test Local Health**:
+   ```bash
+   # Test if app responds on server
+   curl http://localhost:3001
+
+   # Should return HTML content
+   ```
+
+4. **Check Nginx**:
+   ```bash
+   # Test Nginx configuration
+   sudo nginx -t
+
+   # Check Nginx status
+   sudo systemctl status nginx
+
+   # View Nginx logs
+   sudo tail -f /var/log/nginx/error.log
+   ```
+
+### Git Permission Errors
+
+**Symptoms**: Deployment fails with "permission denied" or "dubious ownership" errors
+
+**Solutions**:
+
+```bash
+# SSH to server
+ssh -i ~/Downloads/smartfarm-key.pem ubuntu@54.173.46.123
+
+# Fix git ownership (deploy script handles this automatically)
+cd /opt/smartfarm
+sudo git config --global --add safe.directory /opt/smartfarm
+
+# If still failing, reset repository
+sudo git reset --hard origin/main
+sudo git clean -fd
+```
+
+**Note**: The deployment script runs all git operations with sudo to avoid permission issues.
+
+### Automatic Rollback Executed
+
+**Symptoms**: Workflow completes but shows rollback was performed
+
+**What It Means**:
+- Deployment succeeded initially
+- Health checks failed
+- System automatically rolled back to previous working version
+
+**Solutions**:
+
+1. **Identify the Issue**:
+   ```bash
+   # View workflow logs to see why health check failed
+   gh run view <run-id> --log --repo AutonomosCdM/smartFarm
+   ```
+
+2. **Test Locally First**:
+   ```bash
+   # Before pushing to main, test locally:
+   docker-compose down
+   docker-compose up -d
+
+   # Verify it works
+   curl http://localhost:3001
+   ```
+
+3. **Fix and Redeploy**:
+   - Fix the issue in your code
+   - Test locally again
+   - Push to `main` branch to trigger new deployment
+
+### Manual Trigger Not Working
+
+**Symptoms**: Can't trigger workflow manually from GitHub UI
+
+**Solutions**:
+
+```bash
+# Trigger from command line
+gh workflow run deploy-production.yml --repo AutonomosCdM/smartFarm
+
+# Or specify branch
+gh workflow run deploy-production.yml --ref main --repo AutonomosCdM/smartFarm
+```
+
+### Workflow Stuck/Timeout
+
+**Symptoms**: Workflow runs for 15 minutes then times out
+
+**Check**:
+
+1. **Server Accessible**:
+   ```bash
+   # Test SSH from local machine
+   ssh -i ~/Downloads/smartfarm-key.pem ubuntu@54.173.46.123
+   ```
+
+2. **Server Resources**:
+   ```bash
+   # SSH to server and check
+   df -h  # Disk space
+   free -h  # Memory
+   docker ps  # Running containers
+   ```
+
+3. **GitHub Actions Status**:
+   - Visit [GitHub Status](https://www.githubstatus.com)
+   - Check if GitHub Actions is experiencing issues
+
+---
+
 ## 🔌 API Connection Issues
 
 ### "Connection Failed" Error
