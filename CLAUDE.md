@@ -1,984 +1,411 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Guidance for Claude Code when working with SmartFarm repository.
+
+## ⚠️ Current Reality vs Future Plans
+
+**What EXISTS:**
+- ✅ Docker Compose deployment
+- ✅ Manual data upload via web UI
+- ✅ Production deployment on AWS Lightsail
+- ✅ GitHub Actions CI/CD (auto-deploy on push to main)
+- ✅ Backup/restore functionality
+- ✅ Nginx + SSL
+
+**What DOES NOT exist:**
+- ❌ Kubernetes/k3s
+- ❌ Automated data ingestion
+- ❌ Scheduled downloads
+- ❌ API automation
+
+**References to k8s, CronJobs, or automation in docs are FUTURE plans.**
 
 ## Project Overview
 
-SmartFarm is an AI agricultural assistant with **two deployment options:**
+AI agricultural assistant for Chilean farmers using Open WebUI + Groq API.
 
-1. **Docker Compose (Simple)**: Single container, manual workflow, 2GB RAM minimum
-2. **Kubernetes/k3s (Production)**: Automated data ingestion pipeline, 4GB RAM recommended
+**Stack:**
+- Frontend/Backend: Open WebUI (ghcr.io/open-webui/open-webui:main)
+- AI: Groq API (llama-3.3-70b-versatile primary model)
+- Infrastructure: Docker Compose + Nginx + Let's Encrypt + GitHub Actions CI/CD
+- Data: Docker volumes (SQLite database at `/var/lib/docker/volumes/open-webui/_data/webui.db`)
 
-**Key Architecture Principle:** This is an infrastructure/deployment project with an **extensible data ingestion system**. Changes typically involve:
-- **Infrastructure**: Docker Compose or Kubernetes manifests
-- **Data Sources**: Python scripts for downloading/processing external data
-- **Configuration**: Environment variables, ConfigMaps, Secrets
-- **Deployment**: Bash automation scripts
+**Production:** https://smartfarm.autonomos.dev (54.173.46.123)
 
-**Technology Stack:**
-- **Frontend**: Open WebUI (ghcr.io/open-webui/open-webui:main)
-- **AI Backend**: Groq API (OpenAI-compatible)
-- **Infrastructure Options**:
-  - Docker Compose + Nginx (simple)
-  - Kubernetes (k3s) + Nginx (production)
-- **CI/CD**: GitHub Actions (automatic deployment on push to main)
-- **Data Ingestion** (k3s only):
-  - castai/openwebui-content-sync (folder monitoring, SHA256 diffing)
-  - Kubernetes CronJobs (scheduled downloads)
-  - Python scripts (data extraction & conversion)
-- **Production**: AWS Lightsail with Let's Encrypt SSL
-- **Persistence**: Docker volumes or Kubernetes PVCs
+## Essential Commands
 
-## Core Commands
-
-### Local Development
+### Development
 
 ```bash
-# Start the application
+# Start/stop
 docker-compose up -d
-
-# View logs (real-time, follow mode)
-docker logs -f open-webui
-
-# View last 50 lines of logs
-docker logs open-webui --tail 50
-
-# Stop the application (preserves volume)
 docker-compose down
 
-# Stop and remove volume (⚠️ deletes all data)
-docker-compose down -v
+# Logs
+docker logs -f open-webui
+docker logs open-webui --tail 50
 
-# Restart the application
+# Restart (required after config changes)
 docker-compose restart
 
-# Check container status
-docker ps --filter "name=open-webui"
-
-# Check container health
+# Health check
 docker inspect open-webui --format='{{.State.Health.Status}}'
 
-# Access container shell (for debugging)
+# Shell access
 docker exec -it open-webui bash
 ```
 
-**Access application:** http://localhost:3001 (or port specified in `OPENWEBUI_PORT`)
+**Local URL:** http://localhost:3001
 
-### Production Deployment (Docker Compose)
+### Production Deployment
 
+**Automatic (CI/CD - recommended):**
 ```bash
-# SSH to production server
+# Just push to main, GitHub Actions handles deployment
+git push origin main
+
+# Monitor deployment
+gh run watch
+gh run list --limit 5
+```
+
+**Manual (emergency only):**
+```bash
+# SSH
 ssh -i ~/Downloads/smartfarm-key.pem ubuntu@54.173.46.123
 
-# Deploy/update SmartFarm with Docker Compose
+# Deploy/update
 cd /opt/smartfarm
-./deployment/deploy.sh
+sudo ./deployment/deploy.sh
 
-# Configure Nginx reverse proxy
-./deployment/setup-nginx.sh
-
-# Install SSL certificate
+# Setup Nginx + SSL (first time only)
+sudo ./deployment/setup-nginx.sh
 sudo certbot --nginx -d smartfarm.autonomos.dev --non-interactive --agree-tos --email admin@autonomos.dev --redirect
 ```
-
-### Production Deployment (Kubernetes k3s)
-
-**For automated data ingestion and production-grade infrastructure:**
-
-```bash
-# SSH to production server
-ssh -i ~/Downloads/smartfarm-key.pem ubuntu@54.173.46.123
-
-# Fresh k3s installation
-cd /opt/smartfarm
-sudo ./deployment/k3s-deploy.sh
-
-# OR migrate from Docker Compose
-sudo ./deployment/migrate-to-k3s.sh
-
-# View all resources
-kubectl get all -n smartfarm
-
-# View logs
-kubectl logs -f deployment/openwebui -n smartfarm
-kubectl logs -f deployment/castai-sync -n smartfarm
-
-# Manually trigger data download
-kubectl create job --from=cronjob/CRONJOB-NAME test-run -n smartfarm
-```
-
-**Key k3s Components:**
-- `openwebui` deployment (AI interface + Knowledge Base)
-- `castai-sync` deployment (folder monitoring, incremental sync)
-- CronJobs (scheduled data downloads)
-- PersistentVolumes (openwebui-data, smartfarm-downloads, castai-sync-data)
-- ConfigMaps (scripts, automation config)
-- Secrets (API keys)
-
-**See `docs/K3S_DEPLOYMENT.md` for complete guide.**
 
 ### Data Management
 
 ```bash
-# Backup Open WebUI data (creates ./backups/openwebui-backup-TIMESTAMP.tar.gz)
+# Backup (creates ./backups/openwebui-backup-TIMESTAMP.tar.gz)
 ./scripts/backup.sh
 
-# Restore from backup
+# Restore
 ./scripts/restore.sh BACKUP_FILENAME
 
-# Update to latest Open WebUI version
+# Update Open WebUI
 ./scripts/update.sh
-
-# Inspect volume (see where data is actually stored)
-docker volume inspect open-webui
 ```
 
-**Important:** All user data (conversations, settings, uploaded files, user accounts) is stored in the Docker volume. Always backup before updates or major changes.
+## Configuration
 
-## Architecture
+### Environment Variables (.env)
 
-### Docker Configuration
-
-The application runs entirely in Docker with persistent storage:
-
-- **Container**: `open-webui` (ghcr.io/open-webui/open-webui:main)
-- **Port Mapping**: Host 3001 → Container 8080
-- **Volume**: `open-webui` for data persistence
-- **Network**: `smartfarm-network` (bridge)
-- **Health Check**: HTTP GET on `/health` endpoint
-
-### Environment Variables
-
-Configuration is managed via `.env` file:
-
-- `GROQ_API_KEY`: Primary API key for Groq inference
-- `GROQ_API_BASE`: Groq API endpoint (https://api.groq.com/openai/v1)
-- `OPENWEBUI_PORT`: Host port for Open WebUI (default: 3001)
-- `OPENWEBUI_CONTAINER_NAME`: Docker container name
-- `OPENWEBUI_VOLUME_NAME`: Docker volume for persistence
-- `DEFAULT_LOCALE`: Default language for interface (es-ES for Spanish)
-
-**IMPORTANT**: The `.env` file is gitignored. Always use `.env.example` as template.
-
-### Production Architecture
-
-```
-Internet → HTTPS (443) → Nginx Reverse Proxy → Docker Container (3001) → Open WebUI (8080)
-                ↓
-          Let's Encrypt SSL
-                ↓
-          Auto-renewal via certbot
-```
-
-## Groq API Configuration
-
-SmartFarm uses Groq for AI model access. Configuration requires TWO steps:
-
-### Step 1: Environment Configuration
-
-Edit `.env` file (never commit this file):
 ```bash
-GROQ_API_KEY=gsk_xxxxxxxxxxxxx  # From https://console.groq.com/keys
+GROQ_API_KEY=gsk_xxxxx              # From console.groq.com/keys
 GROQ_API_BASE=https://api.groq.com/openai/v1
+OPENWEBUI_PORT=3001                  # Host port
+DEFAULT_LOCALE=es-ES                 # Spanish interface
 ```
 
-### Step 2: Open WebUI Connection Setup
+**CRITICAL:** `.env` is gitignored. Use `.env.example` as template.
 
-After starting the application:
-1. Navigate to http://localhost:3001
-2. **Create admin account** (first user becomes admin automatically)
-3. Go to **Admin Panel → Settings → Connections**
-4. Click **"+ Add Connection"**
-5. Configure:
-   - **Type**: OpenAI Compatible
-   - **Name**: Groq
-   - **API Base URL**: `https://api.groq.com/openai/v1`
-   - **API Key**: Your Groq API key
-6. Click **Save** and verify connection
+### Groq API Setup
 
-### Step 3: Make Models Public
+1. Add `GROQ_API_KEY` to `.env`
+2. Start application: `docker-compose up -d`
+3. Create admin account (first user = admin)
+4. Admin Panel → Settings → Connections → Add Connection:
+   - Type: OpenAI Compatible
+   - Name: Groq
+   - API Base URL: https://api.groq.com/openai/v1
+   - API Key: [your key]
+5. Admin Panel → Settings → Models → Set visibility to "Public" for each model
 
-**Critical:** Models are private by default. New users won't see any models.
+**Recommended models:** `llama-3.3-70b-versatile`, `groq/compound`, `deepseek-r1-distill-llama-70b`
 
-1. Go to **Admin Panel → Settings → Models**
-2. For each model you want users to access:
-   - Click the model to edit
-   - Change **Visibility** from "Private" to **"Public"**
-   - Click **"Save & Update"**
+See `docs/MODELS.md` for full catalog.
 
-See `docs/MODEL_VISIBILITY.md` for details.
+## CI/CD Pipeline
 
-### Recommended Models for Agriculture
+**Auto-deploy on push to `main`:** GitHub Actions → SSH → Deploy → Health Check → ✅/⚙️
 
-- `llama-3.3-70b-versatile` - Best balance for general queries (131K context)
-- `groq/compound` - Groq-optimized performance (131K context)
-- `deepseek-r1-distill-llama-70b` - Advanced reasoning (131K context)
-- `llama-3.1-8b-instant` - Fast responses for simple tasks (131K context)
-- `whisper-large-v3-turbo` - Audio transcription
-- `moonshotai/kimi-k2-instruct` - Ultra-long context (262K tokens)
+**Monitor:**
+```bash
+gh run list --repo AutonomosCdM/smartFarm
+gh run view <run-id> --log --repo AutonomosCdM/smartFarm
+# Or: https://github.com/AutonomosCdM/smartFarm/actions
+```
 
-See `docs/MODELS.md` for complete model catalog (20+ models available).
+**Manual trigger:**
+```bash
+gh workflow run deploy-production.yml --repo AutonomosCdM/smartFarm
+```
 
-## Key Scripts
+**Emergency rollback:**
+```bash
+ssh -i ~/Downloads/smartfarm-key.pem ubuntu@54.173.46.123
+cd /opt/smartfarm && sudo git reset --hard HEAD~1 && sudo ./deployment/deploy.sh
+```
 
-### `deployment/deploy.sh` - Full Production Deployment
+**Troubleshooting:** See `docs/PRODUCTION_DEPLOYMENT.md` and `docs/TROUBLESHOOTING.md`
 
-**Purpose:** Automated production deployment from scratch or update existing installation.
+## Advanced Configuration
 
-**What it does:**
-1. Installs Docker/Docker Compose/Git if missing
-2. Backs up existing installation to `/opt/smartfarm-backup-TIMESTAMP`
-3. Clones/updates repository to `/opt/smartfarm`
-4. Creates `.env` from template (prompts for manual API key entry)
-5. Pulls latest Docker images and starts services
+### Database Location
 
-**Usage:** `sudo ./deployment/deploy.sh` (must run as root on production server)
+SQLite at `/var/lib/docker/volumes/open-webui/_data/webui.db`
 
-**Important:** Prompts user to manually edit `.env` and add Groq API key before starting containers.
+**Key tables:**
+- `model` - System prompts, filterIds, capabilities
+- `config` - RAG templates, global settings
+- `chat` - Chat history, per-chat overrides
 
-### `deployment/setup-nginx.sh` - Reverse Proxy Configuration
+### System Prompt Configuration
 
-**Purpose:** Configure Nginx as reverse proxy for port 80/443 → 3001.
+Stored in `model.params.system` JSON field.
 
-**What it does:**
-1. Installs Nginx if not present
-2. Creates `/etc/nginx/sites-available/smartfarm` configuration
-3. Enables WebSocket support (required for Open WebUI real-time features)
-4. Configures proxy headers for proper request forwarding
-5. Enables site and reloads Nginx
+**View prompt:**
+```bash
+docker exec -it open-webui sqlite3 /app/backend/data/webui.db \
+  "SELECT json_extract(params, '$.system') FROM model WHERE id='llama-3.3-70b-versatile'"
+```
 
-**Usage:** `sudo ./deployment/setup-nginx.sh`
+**Update prompt:** See `docs/ADVANCED_CONFIGURATION.md` for Python scripts.
 
-**Note:** Run this AFTER `deploy.sh` and BEFORE SSL certificate installation.
+**Prompt hierarchy:**
+1. Chat-level (highest priority, per-chat override)
+2. Model-level (default for all chats) ← **Use this for production**
+3. Playground (testing only)
 
-### `scripts/backup.sh` - Data Backup
+**Note:** Model Description field is display-only, NOT sent to LLM.
 
-**Purpose:** Create timestamped backup of all Open WebUI data.
+### RAG Template
 
-**What it does:**
-1. Checks if Docker and `open-webui` volume exist
-2. Creates `./backups/` directory if missing
-3. Uses Alpine container to tar the entire volume
-4. Outputs: `./backups/openwebui-backup-YYYYMMDD_HHMMSS.tar.gz`
-5. Shows backup size and lists 5 most recent backups
+Controls how knowledge base context is presented to LLM.
 
-**Usage:** `./scripts/backup.sh` (no sudo required)
+**Location:** `config.data.rag.template` (uses `{{CONTEXT}}` and `{{QUERY}}` placeholders)
 
-**What's backed up:** All user accounts, conversations, settings, uploaded files, and admin configurations.
+**View/update:** See `docs/ADVANCED_CONFIGURATION.md`
 
-### `scripts/restore.sh` - Data Restoration
+### Model Filters (filterIds)
 
-**Purpose:** Restore Open WebUI data from a backup file.
+Enable/disable functions for models via `model.meta.filterIds`:
+- `auto_memory` - Recommended native memory
+- `artifacts_v3` - HTML/CSS/JS rendering
+- `adaptive_memory_v3` - NOT recommended (causes JSON format issues)
 
-**Usage:** `./scripts/restore.sh backups/openwebui-backup-YYYYMMDD_HHMMSS.tar.gz`
+**Current config:** `["auto_memory", "artifacts_v3"]`
 
-**⚠️ Warning:** This will overwrite all current data in the volume.
+### Artifacts and Code Collapsing
 
-### `scripts/update.sh` - Version Update
+Use `<details>` tags in system prompt to collapse code blocks:
 
-**Purpose:** Update Open WebUI to the latest version while preserving data.
+```markdown
+<details>
+<summary>📊 Ver código del gráfico</summary>
 
-**What it does:**
-1. Pulls latest `ghcr.io/open-webui/open-webui:main` image
-2. Stops and removes current container
-3. Starts new container with same volume (data persists)
+```html
+<!DOCTYPE html>...
+```
 
-**Usage:** `./scripts/update.sh`
+</details>
 
-**Data Safety:** Volume is preserved, but backup is recommended before updates.
+**PROHIBIDO:**
+- ✖ NO digas "Para ver el gráfico, haz clic..."
+- ✖ NO digas "copia el código"
+- ✖ NO des instrucciones sobre cómo ver el gráfico
+```
 
 ## Repository Structure
 
 ```
 smartFarm_v5/
-├── .env.example              # Environment template
-├── .gitignore               # Git ignore rules (.env, secrets, backups, data/)
-├── docker-compose.yml        # Docker Compose config (simple deployment)
-├── README.md                # User-facing documentation
-├── CLAUDE.md                # This file (guidance for Claude Code)
-├── LICENSE                  # MIT license
+├── .env.example              # Template (commit this)
+├── .env                      # Secrets (NEVER commit)
+├── docker-compose.yml        # Main service
+├── README.md                 # User docs
+├── CLAUDE.md                 # This file
 │
-├── .github/                 # GitHub configuration
-│   └── workflows/          # GitHub Actions CI/CD
-│       └── deploy-production.yml  # Automatic deployment workflow
+├── .github/workflows/        # GitHub Actions CI/CD
+│   └── deploy-production.yml
 │
-├── deployment/              # Deployment automation
-│   ├── deploy.sh           # Docker Compose deployment (CI/CD compatible)
-│   ├── setup-nginx.sh      # Nginx reverse proxy setup
-│   ├── k3s-deploy.sh       # Fresh k3s deployment
-│   ├── migrate-to-k3s.sh   # Docker → k3s migration
-│   └── nginx*.conf         # Nginx configs
+├── deployment/               # Production scripts
+│   ├── deploy.sh            # Auto-deployment (CI/CD compatible)
+│   ├── setup-nginx.sh
+│   └── nginx*.conf
 │
-├── scripts/                 # Management & data ingestion scripts
-│   ├── backup.sh           # Volume backup
-│   ├── restore.sh          # Volume restore
-│   ├── update.sh           # Update Open WebUI
-│   ├── openwebui_client.py # Open WebUI API client
-│   ├── download_*.py       # Data source downloaders (extensible)
-│   ├── *_to_markdown.py    # Format converters for RAG
-│   └── *_automation.py     # Source-specific automation
+├── scripts/                  # Management
+│   ├── backup.sh
+│   ├── restore.sh
+│   └── update.sh
 │
-├── k8s/                     # Kubernetes manifests (k3s deployment)
-│   ├── namespace.yaml      # SmartFarm namespace
-│   ├── configmap-*.yaml    # Environment configs
-│   ├── secret-*.yaml.template # API key templates (never commit actual secrets!)
-│   ├── pvc-*.yaml          # Persistent storage
-│   ├── deployment-*.yaml   # Pod deployments
-│   ├── service-*.yaml      # Service definitions
-│   ├── castai/             # castai-sync manifests
-│   │   ├── configmap-sync.yaml
-│   │   ├── deployment-sync.yaml
-│   │   └── pvc-sync.yaml
-│   └── cronjobs/           # Scheduled data downloads
-│       ├── configmap-scripts.yaml
-│       └── cronjob-*.yaml  # One per data source (extensible)
+├── config/                   # User configs (gitignored)
+├── data/                     # User data (gitignored)
 │
-├── config/                  # Configuration files
-│   └── automation_config.json # Data sources config (gitignored)
-│
-├── data/                    # Downloaded data (gitignored)
-│   ├── *_markdown/         # Processed markdown for RAG
-│   └── *_raw/              # Raw downloaded data
-│
-└── docs/                    # Documentation
-    ├── README.md                   # Documentation index ⭐
-    ├── INSTALLATION.md             # Docker Compose setup
-    ├── K3S_DEPLOYMENT.md           # Kubernetes deployment ⭐
-    ├── AUTOMATED_DATA_INGESTION.md # Add data sources ⭐
-    ├── GROQ_CONFIGURATION.md       # API setup
-    ├── PRODUCTION_DEPLOYMENT.md    # AWS deployment (Docker)
-    ├── LANGUAGE_CONFIGURATION.md   # Set default language
-    ├── MODEL_VISIBILITY.md         # Fix "no models"
-    ├── MODELS.md                   # Model catalog
-    ├── UI_CUSTOMIZATION.md         # UI customization guide
-    ├── TROUBLESHOOTING.md          # Common issues (Docker & k3s)
-    └── archive/                    # Historical/example docs
-        └── proof-of-concept/       # FEGOSA/Consorcio examples
-            ├── README.md           # Why archived
-            ├── AUTOMATION_PLAN.md
-            ├── AUTOMATION_PROGRESS.md
-            ├── FEGOSA_INTEGRATION.md
-            ├── FEGOSA_STATUS.md
-            ├── COMMUNITY_TOOLS_RESEARCH.md
-            └── OPENWEBUI_KNOWLEDGE_BASE.md
+└── docs/
+    ├── INSTALLATION.md
+    ├── GROQ_CONFIGURATION.md
+    ├── PRODUCTION_DEPLOYMENT.md
+    ├── MODELS.md
+    ├── TROUBLESHOOTING.md
+    └── ADVANCED_CONFIGURATION.md  # Database scripts
 ```
 
-**Key Points:**
-- **Automatic deployment:** GitHub Actions CI/CD with health checks and rollback
-- **Two deployment options:** Docker Compose (simple) or k3s (production)
-- **Extensible data pipeline:** Add unlimited data sources without changing infrastructure
-- **Example-specific docs archived:** FEGOSA/Consorcio docs in `docs/archive/proof-of-concept/`
-- **Generic documentation only:** Main docs/ folder contains deployment-agnostic guides
-- **No application code:** Pure infrastructure/configuration project
-- **Python scripts:** Data ingestion only, not application logic
-- **Volume/PVC storage:** No SQL/NoSQL database
-- **Git repo:** https://github.com/AutonomosCdM/smartFarm.git
+## Key Gotchas
 
-## Security Considerations
+### User Access
+- First user = admin (secure before public)
+- Models are **private by default** - admin must set to "Public"
 
-1. **API Key Protection**: `.env` is gitignored and must NEVER be committed. GitHub secret scanning is enabled.
-2. **GitHub Secrets**: SSH keys and deployment credentials stored as GitHub Actions secrets (SSH_PRIVATE_KEY, SSH_HOST, SSH_USER, DEPLOY_PATH).
-3. **SSL/HTTPS**: Production uses Let's Encrypt with auto-renewal via certbot cron job.
-4. **Firewall**: Production server requires ports 80 (HTTP), 443 (HTTPS), and 22 (SSH) open.
-5. **First User Admin**: First user to sign up automatically becomes admin—secure production before making public.
-6. **WebSocket Security**: Nginx configuration includes WebSocket upgrade headers for secure real-time communication.
-7. **Data Files**: `data/` and `config/*.{json,yaml}` are gitignored to prevent accidental commits of sensitive data.
+### API Configuration
+- Two-step setup: `.env` file + Admin Panel connection
+- Groq doesn't support embeddings (use native memory instead)
 
-## Development Workflow
+### Infrastructure
+- WebSocket required (Nginx config includes upgrade headers)
+- Container port 8080 → Host port 3001
+- SSL auto-renews via certbot cron
 
-This is an infrastructure project with minimal code changes. Most work involves:
+### Data Safety
+- Volume persists across restarts/updates
+- `docker-compose down -v` **DELETES ALL DATA**
+- Always backup before major changes
 
-### Configuration Changes
-1. Edit `.env.example` (template that gets committed)
-2. Never edit or commit `.env` (actual secrets)
-3. Test locally with `docker-compose down && docker-compose up -d`
-4. Verify at http://localhost:3001
-
-### Script Changes
-1. Edit deployment/management scripts (bash)
-2. Test locally on your machine before production
-3. Make scripts executable: `chmod +x scripts/*.sh deployment/*.sh`
-
-### Docker Compose Changes
-1. Edit `docker-compose.yml` for service configuration
-2. Test with `docker-compose config` to validate syntax
-3. Apply changes: `docker-compose down && docker-compose up -d`
-
-### Documentation Updates
-1. Keep `docs/` in sync with functionality
-2. Update `CLAUDE.md` when architecture or workflows change
-3. Update `README.md` for user-facing feature changes
-
-### Production Deployment (Automatic - CI/CD)
-
-**Normal workflow (recommended):**
-1. Push changes to `main` branch on GitHub
-2. GitHub Actions automatically deploys to production
-3. Health checks verify deployment success
-4. Automatic rollback if deployment fails
-5. Verify at https://smartfarm.autonomos.dev
-
-**Manual deployment (fallback):**
-1. SSH to production: `ssh -i ~/Downloads/smartfarm-key.pem ubuntu@54.173.46.123`
-2. Run deployment: `cd /opt/smartfarm && sudo ./deployment/deploy.sh`
-3. Verify at https://smartfarm.autonomos.dev
-
-See "CI/CD Pipeline" section below for details.
-
-## Production URLs
-
-- **Production Instance**: https://smartfarm.autonomos.dev
-- **Server IP**: 54.173.46.123 (AWS Lightsail)
-- **SSH Access**: `ssh -i ~/Downloads/smartfarm-key.pem ubuntu@54.173.46.123`
-- **Local Development**: http://localhost:3001
-
-## CI/CD Pipeline
-
-SmartFarm uses **GitHub Actions for automatic deployment** to production. Push to `main` branch triggers automatic deployment with health checks and rollback capability.
-
-### How It Works
-
-```
-Push to main → GitHub Actions → SSH Deploy → Health Check → ✅ Success or ⏮️ Rollback
-```
-
-**Workflow:** `.github/workflows/deploy-production.yml`
-
-**Steps:**
-1. **Checkout code** from GitHub repository
-2. **Setup SSH** with secrets (SSH_PRIVATE_KEY, SSH_HOST, SSH_USER, DEPLOY_PATH)
-3. **Test SSH connection** to production server
-4. **Deploy to production:**
-   - Git pull latest changes
-   - Run `deployment/deploy.sh` with CI/CD mode
-   - Deploy script includes health checks (6 attempts, 60 seconds)
-5. **Health check** from GitHub Actions (additional verification)
-6. **Rollback** if deployment or health checks fail
-
-### GitHub Secrets Configuration
-
-Required secrets in repository settings (Settings → Secrets → Actions):
-
-```
-SSH_PRIVATE_KEY = [contents of smartfarm-key.pem]
-SSH_HOST = 54.173.46.123
-SSH_USER = ubuntu
-DEPLOY_PATH = /opt/smartfarm
-```
-
-**Note:** Secrets are already configured and working.
-
-### Monitoring Deployments
-
-```bash
-# View recent deployments
-gh run list --limit 10
-
-# Watch deployment in real-time
-gh run watch
-
-# View specific deployment logs
-gh run view RUN_ID --log
-
-# View latest deployment
-gh run view --log
-
-# Check deployment status
-gh run list --limit 1
-
-# View in browser
-open https://github.com/AutonomosCdM/smartFarm/actions
-```
-
-### Deployment Features
-
-**✅ Automatic Triggers:**
-- Push to `main` branch
-- Manual trigger via GitHub UI (workflow_dispatch)
-
-**✅ Health Checks:**
-- Local health check in deploy script (6 attempts, 60 seconds)
-- GitHub Actions health check (6 attempts, 60 seconds)
-- Checks both HTTP 200/301/302 responses
-
-**✅ Rollback Mechanism:**
-- Automatic rollback if health check fails
-- Git reset to previous commit
-- Re-run deployment script
-- Preserves data (only code rolls back)
-
-**✅ CI/CD Mode Detection:**
-- Deploy script detects CI/CD environment
-- Skips interactive prompts
-- Proper exit codes for automation
-- Verbose logging for debugging
-
-### Manual Deployment (Fallback)
-
-If GitHub Actions is unavailable:
-
-```bash
-# SSH to server
-ssh -i ~/Downloads/smartfarm-key.pem ubuntu@54.173.46.123
-
-# Pull and deploy
-cd /opt/smartfarm
-sudo git pull origin main
-sudo ./deployment/deploy.sh
-```
-
-### Troubleshooting CI/CD
-
-**Deployment fails with SSH errors:**
-```bash
-# Verify secrets are configured
-gh secret list
-
-# Test SSH connection manually
-ssh -i ~/Downloads/smartfarm-key.pem ubuntu@54.173.46.123 "echo 'SSH works'"
-```
-
-**Health check fails but service is running:**
-```bash
-# Check if service is accessible
-curl -I https://smartfarm.autonomos.dev
-
-# Check container status
-ssh -i ~/Downloads/smartfarm-key.pem ubuntu@54.173.46.123 "docker ps"
-
-# View container logs
-ssh -i ~/Downloads/smartfarm-key.pem ubuntu@54.173.46.123 "docker logs open-webui --tail 50"
-```
-
-**Workflow stuck or failed:**
-```bash
-# View workflow logs
-gh run view --log
-
-# Cancel stuck workflow
-gh run cancel
-
-# Re-trigger deployment
-git commit --allow-empty -m "trigger: re-deploy"
-git push origin main
-```
-
-**Permission errors in deployment:**
-- Deploy script runs with sudo
-- Git operations also use sudo for consistency
-- `/opt/smartfarm` is owned by root
-
-### Deployment Best Practices
-
-1. **Always test locally first:**
-   ```bash
-   docker-compose down && docker-compose up -d
-   ```
-
-2. **Use feature branches for development:**
-   ```bash
-   git checkout -b feature/my-feature
-   # Make changes
-   git push origin feature/my-feature
-   # Create PR to main
-   ```
-
-3. **Monitor deployments:**
-   ```bash
-   gh run watch  # Keep open during deployment
-   ```
-
-4. **Backup before major changes:**
-   ```bash
-   ./scripts/backup.sh  # Run locally or on server
-   ```
-
-5. **Verify deployment success:**
-   ```bash
-   curl -I https://smartfarm.autonomos.dev  # Should return 200/301/302
-   ```
+### Language
+- `DEFAULT_LOCALE=es-ES` affects new users only
+- Existing users keep their language preference
 
 ## Troubleshooting Quick Reference
 
-### Container won't start
+### Container Issues
 ```bash
-# Check logs for error messages
-docker logs open-webui
-
-# Check if port is available
-lsof -i :3001
-
-# Verify Docker is running
-docker info
-
-# Recreate container
-docker-compose down && docker-compose up -d
-```
-
-### Port conflict (3001 in use)
-```bash
-# Find process using the port
-lsof -i :3001
-
-# Kill the process (if safe to do so)
-kill -9 <PID>
-
-# OR change port in .env
-OPENWEBUI_PORT=3002
-docker-compose down && docker-compose up -d
-```
-
-### "No models found" for users
-**Problem:** Non-admin users see "No results found" in model dropdown.
-
-**Solution:** Admin must set models to "Public" visibility:
-1. Admin Panel → Settings → Models
-2. Edit each model → Change Visibility to "Public"
-3. Save & Update
-
-See `docs/MODEL_VISIBILITY.md` for details.
-
-### API connection issues
-```bash
-# Verify API key in environment
-cat .env | grep GROQ_API_KEY
-
-# Test API key directly with curl
-curl https://api.groq.com/openai/v1/models \
-  -H "Authorization: Bearer YOUR_API_KEY"
-
-# Check if connection is configured in Open WebUI
-# Admin Panel → Settings → Connections → Should see Groq listed
-```
-
-### Container running but can't access web interface
-```bash
-# Check container is healthy
+docker logs open-webui                        # Check errors
+docker-compose down && docker-compose up -d   # Recreate
 docker inspect open-webui --format='{{.State.Health.Status}}'
-
-# Verify port mapping
-docker ps --filter "name=open-webui"
-
-# Check if firewall blocking port
-sudo ufw status
-
-# Test locally on server
-curl http://localhost:3001
 ```
 
-### Nginx issues (production only)
+### Port Conflict
 ```bash
-# Test configuration syntax
-sudo nginx -t
-
-# Restart Nginx
-sudo systemctl restart nginx
-
-# Check Nginx status
-sudo systemctl status nginx
-
-# View error logs
-sudo tail -f /var/log/nginx/error.log
-
-# View access logs
-sudo tail -f /var/log/nginx/access.log
+lsof -i :3001                  # Find process
+kill -9 <PID>                  # Kill it
+# OR change OPENWEBUI_PORT in .env
 ```
 
-### SSL certificate issues
+### No Models Found
+Admin Panel → Settings → Models → Set visibility to "Public"
+
+### API Connection Issues
 ```bash
-# Check certificate status
-sudo certbot certificates
-
-# Renew certificate manually
-sudo certbot renew
-
-# Test renewal process (dry run)
-sudo certbot renew --dry-run
-
-# View certbot logs
-sudo tail -f /var/log/letsencrypt/letsencrypt.log
+cat .env | grep GROQ_API_KEY   # Verify key
+curl https://api.groq.com/openai/v1/models -H "Authorization: Bearer YOUR_KEY"
 ```
 
-### Language not changing after setting DEFAULT_LOCALE
-1. Clear browser cache and cookies (Ctrl+Shift+Delete)
-2. Open in private/incognito window to test
-3. Verify environment variable loaded: `docker exec open-webui env | grep DEFAULT_LOCALE`
-4. Restart container: `docker-compose restart`
+### Unwanted JSON Response Format
+**Cause:** RAG template has JSON format instructions.
+**Fix:** Remove "FORMATO" section from `config.data.rag.template`
+**Details:** See `docs/ADVANCED_CONFIGURATION.md`
 
-**Note:** Existing users who set their language preference must change it manually in Settings. DEFAULT_LOCALE only affects new users.
+### Code Blocks Not Collapsed
+**Fix:** Add `<details>` tags to system prompt
+**Details:** See `docs/ADVANCED_CONFIGURATION.md` → Artifacts section
 
-### Complete reset (⚠️ destroys all data)
+### System Prompt Not Applying
+**Common causes:**
+- Chat-level override present (check Chat Settings)
+- Edited Model Description instead of System Prompt
+- Forgot to restart container: `docker-compose restart`
+
+### Database Timestamp Errors
+**Critical:** Different tables require different formats:
+- `model` table: INTEGER (Unix timestamp)
+- `config` table: STRING (ISO format)
+
+**Errors:**
+- `TypeError: fromisoformat` → Used integer for config table
+- `ValidationError: should be integer` → Used string for model table
+
+**Fix:** See `docs/ADVANCED_CONFIGURATION.md` → Timestamp Formats
+
+### CI/CD Deployment Failures
 ```bash
-# Stop and remove everything
+# Check workflow status
+gh run view --log
+
+# SSH to server and check
+ssh -i ~/Downloads/smartfarm-key.pem ubuntu@54.173.46.123
+docker ps
+docker logs open-webui
+```
+
+**Details:** See `docs/TROUBLESHOOTING.md` → CI/CD Deployment Issues
+
+### Complete Reset (⚠️ destroys data)
+```bash
 docker-compose down -v
-
-# Remove Docker image
 docker rmi ghcr.io/open-webui/open-webui:main
-
-# Start fresh
 docker-compose up -d
 ```
 
-For more detailed troubleshooting, see `docs/TROUBLESHOOTING.md`.
+**For detailed troubleshooting:** See `docs/TROUBLESHOOTING.md`
 
-## Data Persistence
+## Knowledge Base (RAG)
 
-All application data lives in the Docker volume (not a database):
+**Current method:** Manual upload via web UI
 
-**Volume Name:** `open-webui` (configurable via `OPENWEBUI_VOLUME_NAME`)
+**Workflow:**
+1. Workspace → Knowledge → Create collection
+2. Upload files (markdown recommended)
+3. Select knowledge base in chat
 
-**What's Stored:**
-- User accounts and authentication data
-- All conversations and chat history
-- User-uploaded files and documents
-- Admin panel configurations
-- API connection settings
-- Model visibility settings
+**Limitations:** Manual, one file at a time, no automation
 
-**Volume Location:** Docker-managed storage (use `docker volume inspect open-webui` to see path)
+**Future:** See `docs/roadmap/AUTOMATION_ROADMAP.md`
 
-**Backup Strategy:**
-- Run `./scripts/backup.sh` before major changes or updates
-- Backups are stored in `./backups/` directory
-- Volume persists across container restarts, updates, and Docker Compose down (unless `-v` flag is used)
+## Production Notes
 
-**Important:** `docker-compose down -v` will DELETE the volume and all data. Only use if intentionally resetting.
+**URLs:**
+- Production: https://smartfarm.autonomos.dev
+- Server: 54.173.46.123 (AWS Lightsail)
+- SSH: `ssh -i ~/Downloads/smartfarm-key.pem ubuntu@54.173.46.123`
 
-## Important Notes & Gotchas
+**Deployment flow:**
+1. Push to `main` branch
+2. GitHub Actions deploys automatically
+3. Health checks verify deployment
+4. Automatic rollback if fails
+5. Verify: https://smartfarm.autonomos.dev
 
-### User Access and Permissions
-- **First user = admin**: First signup on fresh installation automatically becomes admin. Secure production before making public.
-- **Model visibility**: Models are **private by default** (Open WebUI v0.4.8+). Admin must set each model to "Public" in Admin Panel → Settings → Models. Otherwise, non-admin users see "No models found".
+**Security:**
+- API keys gitignored + GitHub secret scanning enabled
+- SSL via Let's Encrypt (auto-renewal)
+- Firewall: ports 22, 80, 443 open
+- WebSocket upgrade headers in Nginx
+- GitHub Secrets: SSH_PRIVATE_KEY, SSH_HOST, SSH_USER, DEPLOY_PATH
 
-### API Configuration
-- **Two-step setup required**: Groq API key goes in `.env` file, but connection must also be configured in Open WebUI Admin Panel → Settings → Connections.
-- **No embeddings support**: Groq API does not support embeddings. Auto Memory and Adaptive Memory functions won't work. Use native Open WebUI memory (Settings → Personalization) instead.
+## Development Workflow
 
-### Infrastructure
-- **WebSocket required**: Open WebUI needs WebSocket support for real-time features. Nginx configuration includes proper upgrade headers.
-- **SSL auto-renewal**: Certbot sets up automatic renewal via cron job. Certificate renews before expiration.
-- **Port mapping**: Container runs on port 8080 internally, mapped to host port 3001 (configurable via `OPENWEBUI_PORT`).
+This is a configuration project (no application code).
 
-### Language Configuration
-- **Default locale**: Set via `DEFAULT_LOCALE=es-ES` in `.env` file. Applies to new users only.
-- **User preferences persist**: Existing users who set their language preference keep their selection. Admin cannot force change.
-- **Browser fallback**: If `DEFAULT_LOCALE` not set, Open WebUI detects browser language.
+**Making changes:**
+1. Edit `.env.example` (committed template)
+2. Copy to `.env` and add secrets (never commit `.env`)
+3. Test locally: `docker-compose down && docker-compose up -d`
+4. Verify: http://localhost:3001
+5. Update docs if architecture changes
+6. Push to `main` - CI/CD auto-deploys
 
-### Data Safety
-- **Volume persistence**: Data survives container restarts and updates. Only deleted with `docker-compose down -v`.
-- **No database**: All data stored in Docker volume filesystem, not SQL/NoSQL database.
-- **Backup before updates**: Always run `./scripts/backup.sh` before version updates or major changes.
+**Documentation:**
+- Update `CLAUDE.md` for architecture changes
+- Update `docs/` for user-facing changes
+- Archive outdated docs to `docs/archive/`
 
-## Automated Data Ingestion System (k3s Only)
+## References
 
-### Overview
-
-The k3s deployment includes an **extensible data ingestion pipeline** that automatically downloads, processes, and syncs external data sources into the Open WebUI Knowledge Base for RAG-enhanced AI responses.
-
-**Key Components:**
-1. **Python Scripts** (`scripts/download_*.py`, `scripts/*_to_markdown.py`)
-2. **Kubernetes CronJobs** (`k8s/cronjobs/cronjob-*.yaml`)
-3. **castai-sync** (community tool for folder monitoring)
-4. **Persistent Storage** (`smartfarm-downloads` PVC)
-
-### Adding a New Data Source
-
-**This is a common task. Follow these steps:**
-
-#### Step 1: Create Download Script
-
-```python
-# scripts/download_newsource.py
-import requests
-from pathlib import Path
-
-def download():
-    url = "https://api.example.com/data"
-    response = requests.get(url)
-    
-    output_dir = Path("data/newsource/")
-    output_dir.mkdir(parents=True, exist_ok=True)
-    
-    with open(output_dir / "data.json", 'w') as f:
-        f.write(response.text)
-    
-    print("✓ Downloaded newsource data")
-
-if __name__ == "__main__":
-    download()
-```
-
-#### Step 2: Create Conversion Script
-
-```python
-# scripts/newsource_to_markdown.py
-import json
-from pathlib import Path
-
-def convert():
-    # Load downloaded data
-    with open("data/newsource/data.json") as f:
-        data = json.load(f)
-    
-    # Convert to markdown for optimal RAG
-    output_dir = Path("data/newsource_markdown/")
-    output_dir.mkdir(parents=True, exist_ok=True)
-    
-    markdown = f"""# {data['title']}
-
-**Source:** {data['source']}
-**Date:** {data['date']}
-
----
-
-{data['content']}
-
----
-
-*Processed by SmartFarm Data Pipeline*
-"""
-    
-    with open(output_dir / f"{data['date']}_newsource.md", 'w') as f:
-        f.write(markdown)
-    
-    print("✓ Converted newsource data to markdown")
-
-if __name__ == "__main__":
-    convert()
-```
-
-#### Step 3: Create CronJob Manifest
-
-```yaml
-# k8s/cronjobs/cronjob-newsource.yaml
-apiVersion: batch/v1
-kind: CronJob
-metadata:
-  name: newsource-downloader
-  namespace: smartfarm
-spec:
-  schedule: "0 3 * * *"  # Daily at 3 AM
-  jobTemplate:
-    spec:
-      template:
-        spec:
-          containers:
-          - name: downloader
-            image: python:3.11-slim
-            command: ["/bin/bash", "-c"]
-            args:
-              - |
-                pip install -q requests
-                python /app-scripts/download_newsource.py
-                python /app-scripts/newsource_to_markdown.py
-                cp -r data/newsource_markdown/* /data/newsource_markdown/
-            volumeMounts:
-            - name: app-scripts
-              mountPath: /app-scripts
-            - name: downloads
-              mountPath: /data
-          volumes:
-          - name: app-scripts
-            configMap:
-              name: python-scripts
-          - name: downloads
-            persistentVolumeClaim:
-              claimName: smartfarm-downloads
-          restartPolicy: OnFailure
-```
-
-#### Step 4: Deploy to k3s
-
-```bash
-# Add scripts to ConfigMap
-kubectl create configmap python-scripts \
-  --from-file=download_newsource.py=scripts/download_newsource.py \
-  --from-file=newsource_to_markdown.py=scripts/newsource_to_markdown.py \
-  --namespace=smartfarm \
-  --dry-run=client -o yaml | kubectl apply -f -
-
-# Deploy CronJob
-kubectl apply -f k8s/cronjobs/cronjob-newsource.yaml
-
-# Verify
-kubectl get cronjobs -n smartfarm
-```
-
-#### Step 5: Configure castai-sync
-
-```bash
-# Create Knowledge collection in Open WebUI UI
-# Copy collection ID from URL
-
-# Update castai-sync config
-kubectl edit configmap castai-sync-config -n smartfarm
-
-# Add new folder mapping:
-local_folders:
-  mappings:
-    - folder_path: "/data/newsource_markdown"
-      knowledge_id: "YOUR_COLLECTION_ID"
-
-# Restart castai-sync
-kubectl rollout restart deployment/castai-sync -n smartfarm
-```
-
-#### Step 6: Test
-
-```bash
-# Manually trigger first run
-kubectl create job --from=cronjob/newsource-downloader newsource-test -n smartfarm
-
-# Monitor logs
-kubectl logs -f job/newsource-test -n smartfarm
-
-# Check castai-sync detected files
-kubectl logs -f deployment/castai-sync -n smartfarm
-
-# Verify in Open WebUI
-# Go to Workspace → Knowledge → Your Collection
-```
-
-### Example Data Sources
-
-SmartFarm includes **two proof-of-concept data sources** to demonstrate the system:
-
-1. **FEGOSA** (Livestock Pricing) - `cronjob-fegosa.yaml`
-2. **Consorcio Lechero** (Dairy Reports) - `cronjob-consorcio.yaml`
-
-These are **examples only**. The system is designed to scale to **unlimited sources**. See `docs/AUTOMATED_DATA_INGESTION.md` for complete guide.
-
-### Important Notes
-
-- **Incremental Sync**: castai-sync only uploads new/changed files (SHA256 diffing)
-- **No Infrastructure Changes**: Adding sources doesn't require modifying k8s setup
-- **Markdown Optimization**: Convert all data to markdown for best RAG performance
-- **Collection Mapping**: Each data source should map to its own Knowledge collection
-- **Testing**: Always test scripts locally before deploying to k3s
-- **Monitoring**: Use `kubectl logs` to monitor CronJobs and castai-sync
-
-### Troubleshooting Data Ingestion
-
-```bash
-# Check if CronJob is scheduled
-kubectl get cronjobs -n smartfarm
-
-# View recent jobs
-kubectl get jobs -n smartfarm --sort-by=.status.startTime
-
-# Check job logs
-kubectl logs job/JOB-NAME -n smartfarm
-
-# Check castai-sync is detecting files
-kubectl logs -f deployment/castai-sync -n smartfarm
-
-# Verify files exist in PVC
-kubectl exec -it deployment/castai-sync -n smartfarm -- ls -lah /data/
-
-# Manually trigger job for testing
-kubectl create job --from=cronjob/CRONJOB-NAME test-run -n smartfarm
-```
-
-For complete documentation on the automated data ingestion system, see:
-- `docs/K3S_DEPLOYMENT.md` - Full k3s deployment guide
-- `docs/AUTOMATED_DATA_INGESTION.md` - Detailed data source integration guide
+- **Groq Models:** `docs/MODELS.md`
+- **Installation:** `docs/INSTALLATION.md`
+- **Groq Setup:** `docs/GROQ_CONFIGURATION.md`
+- **Production Deploy:** `docs/PRODUCTION_DEPLOYMENT.md`
+- **Troubleshooting:** `docs/TROUBLESHOOTING.md`
+- **Advanced Config:** `docs/ADVANCED_CONFIGURATION.md` (database scripts)
+- **Future Plans:** `docs/roadmap/AUTOMATION_ROADMAP.md`
+- **Git Repo:** https://github.com/AutonomosCdM/smartFarm.git
