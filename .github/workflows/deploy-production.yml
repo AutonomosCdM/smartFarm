@@ -38,11 +38,11 @@ jobs:
         run: |
           ssh -i ~/.ssh/deploy_key \
             ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
-            "git config --global --add safe.directory ${{ secrets.DEPLOY_PATH }} && \
+            "sudo git config --global --add safe.directory ${{ secrets.DEPLOY_PATH }} && \
              cd ${{ secrets.DEPLOY_PATH }} && \
-             git fetch origin && \
-             git checkout main && \
-             git pull origin main && \
+             sudo git fetch origin && \
+             sudo git checkout main && \
+             sudo git pull origin main && \
              sudo ./deployment/deploy.sh"
 
       - name: Health Check
