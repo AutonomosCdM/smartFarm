@@ -25,25 +25,29 @@ jobs:
           mkdir -p ~/.ssh
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
+          cat >> ~/.ssh/config <<EOF
+          Host production
+            HostName ${{ secrets.SSH_HOST }}
+            User ${{ secrets.SSH_USER }}
+            IdentityFile ~/.ssh/deploy_key
+            StrictHostKeyChecking no
+            UserKnownHostsFile /dev/null
+          EOF
+          chmod 600 ~/.ssh/config
 
       - name: Test SSH Connection
         run: |
-          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
-            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
-            "echo 'SSH connection successful'"
+          ssh production "echo 'SSH connection successful'"
 
       - name: Deploy to Production
         id: deploy
         run: |
-          ssh -i ~/.ssh/deploy_key \
-            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
-            "sudo git config --global --add safe.directory ${{ secrets.DEPLOY_PATH }} && \
-             cd ${{ secrets.DEPLOY_PATH }} && \
-             sudo git fetch origin && \
-             sudo git checkout main && \
-             sudo git pull origin main && \
-             sudo ./deployment/deploy.sh"
+          ssh production "sudo git config --global --add safe.directory ${{ secrets.DEPLOY_PATH }} && \
+            cd ${{ secrets.DEPLOY_PATH }} && \
+            sudo git fetch origin && \
+            sudo git checkout main && \
+            sudo git pull origin main && \
+            sudo ./deployment/deploy.sh"
 
       - name: Health Check
         id: health_check
@@ -68,11 +72,9 @@ jobs:
         if: failure() && steps.deploy.conclusion == 'success'
         run: |
           echo "Deployment failed, rolling back..."
-          ssh -i ~/.ssh/deploy_key \
-            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
-            "cd ${{ secrets.DEPLOY_PATH }} && \
-             git reset --hard HEAD~1 && \
-             sudo ./deployment/deploy.sh"
+          ssh production "cd ${{ secrets.DEPLOY_PATH }} && \
+            sudo git reset --hard HEAD~1 && \
+            sudo ./deployment/deploy.sh"
           echo "Rollback completed"
 
       - name: Cleanup
