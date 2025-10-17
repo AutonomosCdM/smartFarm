@@ -36,3 +36,25 @@ node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Data files (downloaded content, should not be in git)
+data/
+config/*.json
+config/*.yaml
+!config/*.example.json
+!config/*.example.yaml
+
+# Sync state files
+.sync_state.json
+*/.sync_state.json
+
+# Test and temporary files
+test_*.md
+test_*.html
+test_*.csv
+*_test.csv
+*_test.md
+*.tmp
+
+# Claude local config
+.claude/

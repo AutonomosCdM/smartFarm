@@ -1,6 +1,23 @@
 version: '3.8'
 
 services:
+  redis:
+    image: redis:7-alpine
+    container_name: smartfarm-redis
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - smartfarm-redis:/data
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - smartfarm-network
+
   open-webui:
     image: ghcr.io/open-webui/open-webui:main
     container_name: ${OPENWEBUI_CONTAINER_NAME:-open-webui}
@@ -14,20 +31,30 @@ services:
     environment:
       - WEBUI_NAME=SmartFarm AI
       - WEBUI_URL=http://localhost:${OPENWEBUI_PORT:-3001}
-      # Optional: Pre-configure environment variables
-      # - OPENAI_API_KEY=${OPENAI_API_KEY}
+      # API Keys for Tools
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      # Redis Configuration
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
+    depends_on:
+      redis:
+        condition: service_healthy
     networks:
       - smartfarm-network
 
 volumes:
   open-webui:
     name: ${OPENWEBUI_VOLUME_NAME:-open-webui}
+    driver: local
+  smartfarm-redis:
+    name: smartfarm-redis
     driver: local
 
 networks:

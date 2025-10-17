@@ -6,7 +6,8 @@
 
 1. Create a Groq account at [console.groq.com](https://console.groq.com)
 2. Generate an API key at [console.groq.com/keys](https://console.groq.com/keys)
-3. Add the API key to your `.env` file
+3. (Optional but recommended) Get OpenAI API key for Excel tool at [platform.openai.com/api-keys](https://platform.openai.com/api-keys)
+4. Add both API keys to your `.env` file
 
 ---
 
@@ -18,31 +19,41 @@
 # Copy the environment template
 cp .env.example .env
 
-# Edit .env and add your Groq API key
+# Edit .env and add your API keys
 # GROQ_API_KEY=your_actual_groq_api_key_here
+# OPENAI_API_KEY=your_actual_openai_api_key_here  # Optional, for Excel tool
 ```
 
-### Step 2: Access Admin Panel
+**Note:** OpenAI API key is optional but required for Excel file analysis. See [EXCEL_PROCESSING.md](EXCEL_PROCESSING.md) for details.
 
+### Step 2: Access Open WebUI
+
+**Local Installation:**
 1. Open http://localhost:3001 in your browser
+
+**Production Instance:**
+1. Open https://smartfarm.autonomos.dev in your browser
+
 2. Create your account (first user becomes administrator automatically)
-3. Click on your **avatar** in the bottom left corner
-4. Select **"Admin Panel"**
 
-### Step 3: Add Groq Connection
+### Step 3: Configure Groq API in UI
 
-1. In the admin panel, go to **Settings → Connections**
-2. Click **"+ Add Connection"**
-3. Select **"OpenAI Compatible"** as the provider type
+**IMPORTANT**: Groq must be configured through the web interface, not just the `.env` file.
+
+1. Click on your **Settings** icon (⚙️) in the top right corner
+2. Go to **Connections** section
+3. Under **OpenAI API**, click to add a new connection
 4. Fill in the details:
-   - **Name**: `Groq`
    - **API Base URL**: `https://api.groq.com/openai/v1`
-   - **API Key**: (paste your Groq API key from `.env`)
-5. Click **"Save"** or **"Verify Connection"**
+   - **API Key**: `gsk_YOUR_GROQ_API_KEY_HERE`
+5. Click **Save**
 
-### Step 4: Select Models
+### Step 4: Verify Connection
 
-Once configured, you'll see Groq models available in the model selector dropdown.
+1. Go back to the main chat interface
+2. Click on **"Select a model"** dropdown
+3. You should see Groq models listed (llama-3.3-70b-versatile, etc.)
+4. Select a model and start chatting!
 
 ---
 
@@ -119,6 +130,30 @@ curl https://api.groq.com/openai/v1/chat/completions \
 
 - 100% OpenAI API compatible
 - Easy migration to/from OpenAI
+- Works alongside OpenAI (hybrid approach for Excel tool)
+
+---
+
+## 🧮 Excel Processing
+
+SmartFarm uses a **hybrid approach** for Excel file analysis:
+
+- **Groq API:** Fast SQL query generation (500-800 tokens/sec)
+- **OpenAI API:** Embeddings only (required by LlamaIndex)
+
+**Why both?**
+- Groq is 10-20x faster for SQL generation
+- OpenAI embeddings required by LlamaIndex (Groq doesn't support embeddings yet)
+- Best of both worlds: speed + functionality
+
+**Setup:**
+```bash
+# Both keys required for Excel tool
+GROQ_API_KEY=gsk_xxxxx
+OPENAI_API_KEY=sk-xxxxx
+```
+
+**See:** [EXCEL_PROCESSING.md](EXCEL_PROCESSING.md) for technical details.
 
 ---
 
