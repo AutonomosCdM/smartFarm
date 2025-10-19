@@ -48,13 +48,37 @@ config/*.yaml
 .sync_state.json
 */.sync_state.json
 
-# Test and temporary files
+# Temporary files
+*.tmp
+
+# Backup files
+backups/
+*.backup
+*.bak
+
+# Deployment summaries (use docs/ instead)
+DEPLOYMENT_SUMMARY*.md
+SECURITY_HARDENING*.md
+
+# Test artifacts (use tests/ directory)
 test_*.md
 test_*.html
 test_*.csv
 *_test.csv
 *_test.md
-*.tmp
+TEST_RESULTS*.md
+test_artifacts.md
+test_dashboard.html
+produccion_test.csv
 
-# Claude local config
-.claude/
+# Monitor files
+.env.monitor
+*.monitor
+
+# Empty or temporary directories
+pipelines/
+temp/
+tmp/
+
+# Claude local config (only local settings)
+.claude/settings.local.json

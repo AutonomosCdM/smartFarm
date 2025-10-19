@@ -657,10 +657,10 @@ docker logs open-webui | grep -i "error\|exception" | grep sql_tool
 
 ## Related Documentation
 
-- **Main Configuration:** [CLAUDE.md](/Users/autonomos_dev/Projects/smartFarm_v5/CLAUDE.md)
-- **Groq Setup:** [GROQ_CONFIGURATION.md](/Users/autonomos_dev/Projects/smartFarm_v5/docs/GROQ_CONFIGURATION.md)
-- **Troubleshooting:** [TROUBLESHOOTING.md](/Users/autonomos_dev/Projects/smartFarm_v5/docs/TROUBLESHOOTING.md)
-- **Production Deployment:** [PRODUCTION_DEPLOYMENT.md](/Users/autonomos_dev/Projects/smartFarm_v5/docs/PRODUCTION_DEPLOYMENT.md)
+- **Main Configuration:** [CLAUDE.md](../CLAUDE.md)
+- **Groq Setup:** [GROQ_CONFIGURATION.md](GROQ_CONFIGURATION.md)
+- **Troubleshooting:** [TROUBLESHOOTING.md](TROUBLESHOOTING.md)
+- **Production Deployment:** [DEPLOYMENT.md](DEPLOYMENT.md)
 
 ---
 

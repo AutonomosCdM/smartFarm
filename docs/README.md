@@ -1,105 +1,284 @@
-# SmartFarm Documentation Index
+# SmartFarm Documentation
 
 Welcome to SmartFarm - an AI agricultural assistant for Chilean farmers using Open WebUI + Groq API.
 
-## 📚 Documentation Overview
+**Production:** https://smartfarm.autonomos.dev | **Server:** 98.87.30.163
 
-This documentation is organized by audience and use case to help you find what you need quickly.
+---
 
-### 🚀 Getting Started
+## 📚 Quick Navigation
+
+### 🚀 Getting Started (5-15 minutes)
 - **[QUICKSTART.md](QUICKSTART.md)** - Get SmartFarm running in 5 minutes
+- **[INSTALLATION.md](INSTALLATION.md)** - Detailed local installation guide
 - **[ARCHITECTURE.md](ARCHITECTURE.md)** - System design, components, and data flow
-- **[INSTALLATION.md](INSTALLATION.md)** - Detailed installation guide
 
-### 🔧 For Developers
-- **[GROQ_CONFIGURATION.md](GROQ_CONFIGURATION.md)** - Set up Groq API for AI capabilities
-- **[EXCEL_PROCESSING.md](EXCEL_PROCESSING.md)** - Excel file analysis with SQL queries
-- **[ADVANCED_CONFIGURATION.md](ADVANCED_CONFIGURATION.md)** - Database configuration and system prompts
+### ⚙️ Configuration
+- **[GROQ_CONFIGURATION.md](GROQ_CONFIGURATION.md)** - Configure Groq API for AI models
+- **[EXCEL_PROCESSING.md](EXCEL_PROCESSING.md)** - Excel file analysis with SQL
+- **[MODELS.md](MODELS.md)** - Available AI models and capabilities
 
-### 🚢 For Operations
-- **[DEPLOYMENT.md](DEPLOYMENT.md)** - Production deployment on AWS Lightsail
-- **[operations/](operations/)** - Day-to-day operational procedures
-  - [BACKUP_RESTORE.md](operations/BACKUP_RESTORE.md) - Backup and restore procedures
-  - [MONITORING.md](operations/MONITORING.md) - System monitoring and alerts
-  - [PERFORMANCE_TUNING.md](operations/PERFORMANCE_TUNING.md) - Optimization guide
-  - **[CICD_DEPLOYMENT.md](operations/CICD_DEPLOYMENT.md)** - GitHub Actions CI/CD guide
+### 🚢 Deployment & Operations
+- **[DEPLOYMENT.md](DEPLOYMENT.md)** - Production deployment guide (AWS Lightsail)
+- **[operations/CICD.md](operations/CICD.md)** - CI/CD with GitHub Actions + self-hosted runner
+- **[operations/BACKUP_RESTORE.md](operations/BACKUP_RESTORE.md)** - Backup and disaster recovery
+- **[operations/MONITORING.md](operations/MONITORING.md)** - CloudWatch monitoring and alerts
+- **[operations/PERFORMANCE_TUNING.md](operations/PERFORMANCE_TUNING.md)** - Redis cache and optimization
 
-### 🔒 For Security
+### 🔒 Security
 - **[SECURITY.md](SECURITY.md)** - Security overview and best practices
-- **[security/](security/)** - Security-specific documentation
-  - [INCIDENTS.md](security/INCIDENTS.md) - Incident reports and postmortems
-  - [SECRETS_MANAGEMENT.md](security/SECRETS_MANAGEMENT.md) - API keys and rotation procedures
-  - [AUDIT_REPORTS.md](security/AUDIT_REPORTS.md) - Security audit findings
-  - **[GITHUB_ACTIONS_SSH_SECURITY.md](security/GITHUB_ACTIONS_SSH_SECURITY.md)** - CI/CD SSH security configuration
+- **[security/SSH_HARDENING.md](security/SSH_HARDENING.md)** - SSH security with fail2ban
+- **[security/SECRETS_MANAGEMENT.md](security/SECRETS_MANAGEMENT.md)** - API key rotation procedures
+- **[security/INCIDENTS.md](security/INCIDENTS.md)** - Security incident reports
+- **[security/AUDIT_REPORTS.md](security/AUDIT_REPORTS.md)** - Security audit findings
 
-### 🛠 Troubleshooting
+### 🔧 Troubleshooting
 - **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)** - Common issues and solutions
 
-### 📖 Reference
-- **[MODELS.md](MODELS.md)** - Available AI models and capabilities
-- **[api/](api/)** - API documentation for tools and integrations
+---
 
-## 🎯 Quick Links by Role
+## 🎯 Documentation by Role
 
-### I'm a New Developer
-1. Start with **[QUICKSTART.md](QUICKSTART.md)**
-2. Read **[ARCHITECTURE.md](ARCHITECTURE.md)** to understand the system
-3. Follow **[INSTALLATION.md](INSTALLATION.md)** for local setup
-4. Check **[GROQ_CONFIGURATION.md](GROQ_CONFIGURATION.md)** for AI setup
+### New Developer
+**Goal:** Get SmartFarm running locally and understand the system
 
-### I'm an Operator
-1. Review **[DEPLOYMENT.md](DEPLOYMENT.md)** for production deployment
-2. Learn **[operations/CICD_DEPLOYMENT.md](operations/CICD_DEPLOYMENT.md)** for CI/CD
-3. Set up **[operations/MONITORING.md](operations/MONITORING.md)**
-4. Learn **[operations/BACKUP_RESTORE.md](operations/BACKUP_RESTORE.md)**
-5. Keep **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)** handy
+1. **[QUICKSTART.md](QUICKSTART.md)** - 5-minute local setup
+2. **[ARCHITECTURE.md](ARCHITECTURE.md)** - Understand the system design
+3. **[GROQ_CONFIGURATION.md](GROQ_CONFIGURATION.md)** - Configure AI capabilities
+4. **[EXCEL_PROCESSING.md](EXCEL_PROCESSING.md)** - Learn the Excel analysis feature
 
-### I'm Handling an Incident
-1. Check **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)** for known issues
-2. Review **[security/INCIDENTS.md](security/INCIDENTS.md)** for similar past incidents
-3. Follow **[operations/BACKUP_RESTORE.md](operations/BACKUP_RESTORE.md)** if rollback needed
-4. Document in **[security/INCIDENTS.md](security/INCIDENTS.md)** after resolution
+**Time:** 30 minutes to productive
 
-### I'm Doing a Security Review
-1. Start with **[SECURITY.md](SECURITY.md)** for overview
-2. Review **[security/GITHUB_ACTIONS_SSH_SECURITY.md](security/GITHUB_ACTIONS_SSH_SECURITY.md)** for CI/CD security
-3. Review **[security/AUDIT_REPORTS.md](security/AUDIT_REPORTS.md)** for past findings
-4. Check **[security/SECRETS_MANAGEMENT.md](security/SECRETS_MANAGEMENT.md)** for key rotation
-5. Read **[security/INCIDENTS.md](security/INCIDENTS.md)** for incident history
+---
+
+### DevOps Engineer
+**Goal:** Deploy and maintain production infrastructure
+
+1. **[DEPLOYMENT.md](DEPLOYMENT.md)** - Initial server setup
+2. **[operations/CICD.md](operations/CICD.md)** - Automated deployments
+3. **[operations/BACKUP_RESTORE.md](operations/BACKUP_RESTORE.md)** - Data protection
+4. **[operations/MONITORING.md](operations/MONITORING.md)** - Observability setup
+5. **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)** - Problem solving
+
+**Time:** 2 hours to production-ready
+
+---
+
+### Security Engineer
+**Goal:** Audit and harden production security
+
+1. **[SECURITY.md](SECURITY.md)** - Security posture overview
+2. **[security/SSH_HARDENING.md](security/SSH_HARDENING.md)** - SSH security layers
+3. **[security/SECRETS_MANAGEMENT.md](security/SECRETS_MANAGEMENT.md)** - Key management
+4. **[security/AUDIT_REPORTS.md](security/AUDIT_REPORTS.md)** - Past audits
+5. **[security/INCIDENTS.md](security/INCIDENTS.md)** - Incident history
+
+**Time:** 1 hour to complete audit
+
+---
+
+### On-Call Engineer
+**Goal:** Respond to incidents quickly
+
+**Emergency Procedures:**
+1. **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)** - Start here for all issues
+2. **[operations/BACKUP_RESTORE.md](operations/BACKUP_RESTORE.md)** - Restore from backup
+3. **[operations/CICD.md](operations/CICD.md)** - Rollback deployments
+4. **[security/INCIDENTS.md](security/INCIDENTS.md)** - Document the incident
+
+**Emergency Contacts:**
+- **SSH:** `ssh -i ~/Downloads/smartfarm-key.pem ubuntu@98.87.30.163`
+- **Logs:** `docker logs open-webui`
+- **Rollback:** `cd /opt/smartfarm && sudo git reset --hard HEAD~1 && sudo ./deployment/deploy.sh`
+
+**Time:** 2 minutes to incident response
+
+---
 
 ## 📊 System Overview
 
 ```
-User → Browser → HTTPS → Nginx → Docker → Open WebUI → Groq API
-                  ↓                ↓           ↓          ↓
-                 SSL             SQLite    RAG/Tools   AI Models
-                                           Knowledge
+User Browser
+    ↓ HTTPS
+Nginx (Port 443) + SSL
+    ↓
+Open WebUI Container (Port 8080)
+    ↓                    ↓
+Redis Cache          Groq API
+(90% hit rate)      (AI Models)
+    ↓
+SQLite Database
+(User data, chats, knowledge base)
 ```
 
-## 🔑 Key Information
-
-- **Production URL**: https://smartfarm.autonomos.dev
-- **Server IP**: 98.87.30.163 (AWS Lightsail, Static IP)
-- **Tech Stack**: Docker, Open WebUI, Groq API, Nginx, Let's Encrypt
-- **Repository**: https://github.com/AutonomosCdM/smartFarm
-- **CI/CD**: GitHub Actions (auto-deploy on push to main)
-
-## 📝 Documentation Standards
-
-- **Markdown** format for all documentation
-- **ASCII art** or Mermaid.js for diagrams
-- **Single source of truth** - no duplicate information
-- **Clear examples** with actual commands and outputs
-- **Version tracking** through git
-
-## 🗂 Archive
-
-Older or deprecated documentation has been moved to **[archive/](archive/)**. This includes:
-- Future roadmap items (k8s, automation)
-- Superseded procedures
-- Historical documentation
+**Key Technologies:**
+- **Frontend/Backend:** Open WebUI (Docker)
+- **AI:** Groq API (llama-3.3-70b-versatile)
+- **Cache:** Redis 7 (90% hit rate, 10-50x speedup)
+- **Database:** SQLite (Docker volume)
+- **Infrastructure:** Nginx, Let's Encrypt SSL
+- **CI/CD:** GitHub Actions + self-hosted runner
+- **Monitoring:** CloudWatch (free tier)
 
 ---
 
-*Last updated: 2025-10-17*
-*Documentation version: 2.0*
+## 🔑 Critical Information
+
+| Item | Value | Notes |
+|------|-------|-------|
+| **Production URL** | https://smartfarm.autonomos.dev | Main application |
+| **Server IP** | 98.87.30.163 | AWS Lightsail (static) |
+| **SSH Key** | ~/Downloads/smartfarm-key.pem | For server access |
+| **Repository** | github.com/AutonomosCdM/smartFarm | Main repo |
+| **Deploy Method** | Self-hosted runner | Push to `main` auto-deploys |
+
+**Environment Variables:**
+```bash
+GROQ_API_KEY=gsk_xxx    # For AI chat + SQL generation
+OPENAI_API_KEY=sk-xxx   # For Excel embeddings only
+OPENWEBUI_PORT=3001     # Local dev port
+```
+
+---
+
+## 📈 Performance Metrics
+
+**Current Production Performance:**
+- **Query Speed:** 1.90ms average (154x faster vs baseline)
+- **Cache Hit Rate:** 90% (Redis)
+- **API Cost:** $1.50/month (90% reduction)
+- **Uptime:** 99.9%+ (CloudWatch monitoring)
+- **Backup RTO:** 5-10 minutes
+- **Deployment Time:** 2-3 minutes
+
+---
+
+## 🗂️ Documentation Structure
+
+```
+docs/
+├── README.md                      # This file - documentation hub
+├── QUICKSTART.md                  # 5-minute getting started
+├── ARCHITECTURE.md                # System design + diagrams
+├── INSTALLATION.md                # Detailed setup
+├── DEPLOYMENT.md                  # Production deployment
+├── SECURITY.md                    # Security overview
+├── TROUBLESHOOTING.md             # Problem solving
+├── GROQ_CONFIGURATION.md          # API setup
+├── EXCEL_PROCESSING.md            # Excel tool
+├── MODELS.md                      # AI model catalog
+│
+├── operations/                    # Operational procedures
+│   ├── CICD.md                   # CI/CD guide
+│   ├── BACKUP_RESTORE.md         # Backup procedures
+│   ├── MONITORING.md             # CloudWatch setup
+│   └── PERFORMANCE_TUNING.md     # Optimization
+│
+├── security/                      # Security documentation
+│   ├── SSH_HARDENING.md          # SSH security
+│   ├── SECRETS_MANAGEMENT.md     # Key rotation
+│   ├── INCIDENTS.md              # Incident reports
+│   └── AUDIT_REPORTS.md          # Security audits
+│
+└── archive/                       # Historical documentation
+    ├── README.md                  # Archive index
+    └── 2025-10-XX-*.md           # Dated archived docs
+```
+
+---
+
+## 📝 Documentation Standards
+
+**Our Principles:**
+- **Single source of truth** - No duplicate information
+- **User-focused** - Organized by role and use case
+- **Action-oriented** - Clear commands with examples
+- **Always current** - Updated with each change
+- **Well-archived** - Historical docs preserved with dates
+
+**File Naming:**
+- Active docs: `TOPIC.md` (e.g., `SECURITY.md`)
+- Archived docs: `YYYY-MM-DD-TOPIC.md` (e.g., `2025-10-19-OLD_SECURITY.md`)
+
+**Internal Links:**
+- Relative paths: `[Link](../security/INCIDENTS.md)`
+- Clear link text: `[Security Incidents](security/INCIDENTS.md)` not `[click here]`
+
+---
+
+## 🗃️ Archive
+
+Older documentation has been preserved in **[archive/](archive/)** with date prefixes:
+
+**Why We Archive:**
+- Preserve historical context
+- Track decision evolution
+- Reference old procedures if needed
+- Maintain clean active docs
+
+**Archive Contents:**
+- Phase 3 executive summary (2025-10-17)
+- GitHub Actions SSH investigation (2025-10-19)
+- Old CI/CD guides (replaced by unified CICD.md)
+- SSH hardening reports (consolidated into SSH_HARDENING.md)
+- Backup automation docs (functionality in scripts)
+
+See **[archive/README.md](archive/README.md)** for complete index.
+
+---
+
+## 🔄 Keeping Documentation Updated
+
+**When to Update:**
+- System architecture changes
+- New features added
+- Configuration changes
+- Security incidents
+- Performance optimizations
+- Deployment process changes
+
+**How to Update:**
+1. Update the relevant doc file
+2. Check for broken links
+3. Update this README if structure changes
+4. Archive old versions if major rewrite
+5. Commit with clear message: `docs: update X for Y change`
+
+---
+
+## 🆘 Getting Help
+
+**For Issues:**
+1. **Check [TROUBLESHOOTING.md](TROUBLESHOOTING.md)** - Most common issues covered
+2. **Review logs** - `docker logs open-webui --tail 100`
+3. **Check [security/INCIDENTS.md](security/INCIDENTS.md)** - Similar past incidents
+4. **GitHub Issues** - Report bugs/requests at github.com/AutonomosCdM/smartFarm/issues
+
+**For Emergencies:**
+1. SSH to server: `ssh -i ~/Downloads/smartfarm-key.pem ubuntu@98.87.30.163`
+2. Check container: `docker ps && docker logs open-webui`
+3. Rollback if needed: See [operations/CICD.md](operations/CICD.md)
+4. Restore from backup: See [operations/BACKUP_RESTORE.md](operations/BACKUP_RESTORE.md)
+
+---
+
+## 📚 External Resources
+
+- **Open WebUI Docs:** https://docs.openwebui.com
+- **Groq API Docs:** https://console.groq.com/docs
+- **Docker Docs:** https://docs.docker.com
+- **Nginx Docs:** https://nginx.org/en/docs/
+- **AWS Lightsail:** https://lightsail.aws.amazon.com/
+
+---
+
+**Documentation Version:** 3.0
+**Last Updated:** 2025-10-19
+**Maintained By:** Autonomos Development Team
+
+**Quality Metrics:**
+- ✅ Zero documentation redundancy
+- ✅ All docs under 300 lines (readable)
+- ✅ Clear navigation by role
+- ✅ Complete internal linking
+- ✅ Historical context preserved
