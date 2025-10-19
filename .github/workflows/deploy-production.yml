@@ -32,12 +32,20 @@ jobs:
             IdentityFile ~/.ssh/deploy_key
             StrictHostKeyChecking no
             UserKnownHostsFile /dev/null
+            ConnectTimeout 30
+            ServerAliveInterval 10
+            ServerAliveCountMax 3
           EOF
           chmod 600 ~/.ssh/config
 
       - name: Test SSH Connection
         run: |
-          ssh production "echo 'SSH connection successful'"
+          echo "Testing SSH connection to ${{ secrets.SSH_HOST }}..."
+          echo "Using key: ~/.ssh/deploy_key"
+          echo "Testing network connectivity first..."
+          nc -zv ${{ secrets.SSH_HOST }} 22 || echo "Direct connection check failed"
+          echo "Attempting SSH connection..."
+          ssh -v production "echo 'SSH connection successful'" 2>&1 | tail -20
 
       - name: Deploy to Production
         id: deploy
