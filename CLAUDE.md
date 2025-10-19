@@ -29,10 +29,9 @@ gh run watch                  # Monitor deployment
 
 **Data Management:**
 ```bash
-./scripts/backup.sh           # Backup
-./scripts/restore.sh FILE     # Restore
-./scripts/update.sh           # Update
-./scripts/optimize-database.sh # Database optimization (if needed)
+./scripts/backup.sh           # Create backup
+./scripts/restore.sh FILE     # Restore from backup
+./scripts/update.sh           # Update Open WebUI
 ```
 
 ### Critical URLs
@@ -62,24 +61,33 @@ docker-compose up -d
 ## DOCUMENTATION INDEX
 
 ### Getting Started
-- `README.md` - User quick start
-- `docs/INSTALLATION.md` - Detailed setup
-- `docs/GROQ_CONFIGURATION.md` - API setup
+- **`docs/README.md`** - Documentation hub with navigation
+- **`docs/QUICKSTART.md`** - 5-minute setup guide
+- **`docs/ARCHITECTURE.md`** - System design & diagrams
+- `docs/INSTALLATION.md` - Detailed installation
+- `docs/GROQ_CONFIGURATION.md` - Groq API setup
 
 ### Operations
-- `docs/PRODUCTION_DEPLOYMENT.md` - Deploy guide
-- `docs/TROUBLESHOOTING.md` - Common issues
-- `docs/ADVANCED_CONFIGURATION.md` - Database scripts
-- `docs/DATABASE_OPTIMIZATION.md` - Performance tuning
+- **`docs/DEPLOYMENT.md`** - Production deployment
+- **`docs/operations/`** - Operational procedures
+  - `BACKUP_RESTORE.md` - Backup & recovery
+  - `MONITORING.md` - CloudWatch & metrics
+  - `PERFORMANCE_TUNING.md` - Optimization guide
+- `docs/TROUBLESHOOTING.md` - Problem solving
+
+### Security
+- **`docs/SECURITY.md`** - Security overview
+- **`docs/security/`** - Security documentation
+  - `INCIDENTS.md` - All incident reports
+  - `SECRETS_MANAGEMENT.md` - Key rotation & secrets
+  - `AUDIT_REPORTS.md` - Security audits & findings
 
 ### Features
 - `docs/EXCEL_PROCESSING.md` - Excel tool details
-- `docs/REDIS_CACHE.md` - Query cache (90% hit rate)
 - `docs/MODELS.md` - AI model catalog
 
-### Planning
-- `.claude/roadmap.md` - Future features
-- `docs/roadmap/AUTOMATION_ROADMAP.md` - Automation plans
+### Archived
+- `docs/archive/` - Consolidated old docs (historical reference)
 
 ## QUICK TROUBLESHOOTING
 
