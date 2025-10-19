@@ -11,50 +11,19 @@ env:
 jobs:
   deploy:
     name: Deploy to AWS Lightsail
-    runs-on: ubuntu-latest
+    runs-on: self-hosted  # Runner installed on production server
     timeout-minutes: 15
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 2  # Need previous commit for rollback
-
-      - name: Setup SSH
-        run: |
-          mkdir -p ~/.ssh /tmp/ssh-control
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
-          cat >> ~/.ssh/config <<EOF
-          Host production
-            HostName ${{ secrets.SSH_HOST }}
-            User ${{ secrets.SSH_USER }}
-            IdentityFile ~/.ssh/deploy_key
-            StrictHostKeyChecking no
-            UserKnownHostsFile /dev/null
-            ConnectTimeout 30
-            ServerAliveInterval 10
-            ServerAliveCountMax 3
-            ControlMaster auto
-            ControlPath /tmp/ssh-control/%r@%h:%p
-            ControlPersist 10m
-          EOF
-          chmod 600 ~/.ssh/config
-
-      - name: Test SSH Connection
-        run: |
-          echo "Testing SSH connection..."
-          ssh production "echo 'SSH connection successful - ControlMaster socket created'"
-
       - name: Deploy to Production
         id: deploy
         run: |
-          ssh production "sudo git config --global --add safe.directory ${{ secrets.DEPLOY_PATH }} && \
-            cd ${{ secrets.DEPLOY_PATH }} && \
-            sudo git fetch origin && \
-            sudo git checkout main && \
-            sudo git pull origin main && \
-            sudo ./deployment/deploy.sh"
+          cd /opt/smartfarm
+          sudo git config --global --add safe.directory /opt/smartfarm
+          sudo git fetch origin
+          sudo git checkout main
+          sudo git pull origin main
+          sudo ./deployment/deploy.sh
 
       - name: Health Check
         id: health_check
@@ -79,15 +48,10 @@ jobs:
         if: failure() && steps.deploy.conclusion == 'success'
         run: |
           echo "Deployment failed, rolling back..."
-          ssh production "cd ${{ secrets.DEPLOY_PATH }} && \
-            sudo git reset --hard HEAD~1 && \
-            sudo ./deployment/deploy.sh"
+          cd /opt/smartfarm
+          sudo git reset --hard HEAD~1
+          sudo ./deployment/deploy.sh
           echo "Rollback completed"
-
-      - name: Cleanup
-        if: always()
-        run: |
-          rm -f ~/.ssh/deploy_key
 
       - name: Deployment Summary
         if: always()
