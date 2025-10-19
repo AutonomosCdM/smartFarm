@@ -22,7 +22,7 @@ jobs:
 
       - name: Setup SSH
         run: |
-          mkdir -p ~/.ssh
+          mkdir -p ~/.ssh /tmp/ssh-control
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
           cat >> ~/.ssh/config <<EOF
@@ -35,17 +35,16 @@ jobs:
             ConnectTimeout 30
             ServerAliveInterval 10
             ServerAliveCountMax 3
+            ControlMaster auto
+            ControlPath /tmp/ssh-control/%r@%h:%p
+            ControlPersist 10m
           EOF
           chmod 600 ~/.ssh/config
 
       - name: Test SSH Connection
         run: |
-          echo "Testing SSH connection to ${{ secrets.SSH_HOST }}..."
-          echo "Using key: ~/.ssh/deploy_key"
-          echo "Testing network connectivity first..."
-          nc -zv ${{ secrets.SSH_HOST }} 22 || echo "Direct connection check failed"
-          echo "Attempting SSH connection..."
-          ssh -v production "echo 'SSH connection successful'" 2>&1 | tail -20
+          echo "Testing SSH connection..."
+          ssh production "echo 'SSH connection successful - ControlMaster socket created'"
 
       - name: Deploy to Production
         id: deploy
