@@ -85,6 +85,30 @@ docker exec open-webui sqlite3 /app/backend/data/webui.db \
 docker-compose restart
 ```
 
+**Excel Analysis Not Working? (DeepSeek V3 Setup):**
+```bash
+# Step 1: Get DeepSeek API key from https://platform.deepseek.com
+# Step 2: Add to .env file
+echo "DEEPSEEK_API_KEY=sk-xxxxx" >> .env
+
+# Step 3: Restart container
+docker-compose restart
+
+# Step 4: In Open WebUI, install tool:
+# Admin Panel → Tools → Import from file
+# Select: tools/excel/sql_deepseek_tool.py
+
+# Step 5: Upload Excel and query
+# "¿Cuántas filas tiene esta tabla?"
+# Should process ALL rows (not just sample)
+```
+
+**Feature Flag (Rollback to Groq):**
+```python
+# In tool settings (Open WebUI):
+USE_DEEPSEEK = False  # Reverts to Groq fallback
+```
+
 **Production Emergency Access:**
 ```bash
 # SSH to server
