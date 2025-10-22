@@ -82,3 +82,14 @@ tmp/
 
 # Claude local config (only local settings)
 .claude/settings.local.json
+
+# Local development directory - for testing integrations before deployment
+# This entire directory contains experimental code and should NEVER be committed
+local-dev/
+.env.litefarm.local
+.env.*.local
+
+# LiteFarm specific (if accidentally placed in root)
+LiteFarm/
+packages/api/.env.local
+packages/webapp/.env.local
